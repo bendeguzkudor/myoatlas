@@ -53,6 +53,11 @@ controls.touches = {
 const zoomRaycaster = new THREE.Raycaster();
 const zoomMouse = new THREE.Vector2();
 
+// Touch zoom state
+let touchStartDistance = 0;
+let touchStartTarget = new THREE.Vector3();
+let isTouchZooming = false;
+
 canvas.addEventListener('wheel', (event) => {
   event.preventDefault();
 
@@ -93,6 +98,100 @@ canvas.addEventListener('wheel', (event) => {
   camera.position.copy(controls.target).add(offset);
   controls.update();
 }, { passive: false });
+
+// ───────────── Touch Pinch Zoom ─────────────
+
+function getTouchDistance(touch1, touch2) {
+  const dx = touch2.clientX - touch1.clientX;
+  const dy = touch2.clientY - touch1.clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getTouchMidpoint(touch1, touch2) {
+  return {
+    x: (touch1.clientX + touch2.clientX) / 2,
+    y: (touch1.clientY + touch2.clientY) / 2
+  };
+}
+
+function onTouchStart(event) {
+  if (event.touches.length === 2) {
+    event.preventDefault();
+    isTouchZooming = true;
+
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+    touchStartDistance = getTouchDistance(touch1, touch2);
+
+    // Find zoom target at midpoint between fingers
+    const midpoint = getTouchMidpoint(touch1, touch2);
+    zoomMouse.x = (midpoint.x / window.innerWidth) * 2 - 1;
+    zoomMouse.y = -(midpoint.y / window.innerHeight) * 2 + 1;
+    zoomRaycaster.setFromCamera(zoomMouse, camera);
+
+    const allTargets = [...muscleMeshes];
+    if (skeletonGroup) {
+      skeletonGroup.traverse((child) => {
+        if (child.isMesh && child.visible) allTargets.push(child);
+      });
+    }
+    const intersects = zoomRaycaster.intersectObjects(allTargets, false);
+    if (intersects.length > 0) {
+      touchStartTarget.copy(intersects[0].point);
+    } else {
+      touchStartTarget.copy(controls.target);
+    }
+  }
+}
+
+function onTouchMove(event) {
+  if (event.touches.length === 2 && isTouchZooming) {
+    event.preventDefault();
+
+    const touch1 = event.touches[0];
+    const touch2 = event.touches[1];
+    const currentDistance = getTouchDistance(touch1, touch2);
+
+    if (touchStartDistance === 0) return;
+
+    // Calculate zoom factor (inverted: pinch in = zoom in)
+    const delta = currentDistance > touchStartDistance ? 1 : -1;
+    const zoomSpeed = 0.04;
+
+    const offset = camera.position.clone().sub(controls.target);
+    const dist = offset.length();
+
+    if (delta > 0 && dist <= controls.minDistance) return;
+    if (delta < 0 && dist >= controls.maxDistance) return;
+
+    const factor = 1 - delta * zoomSpeed;
+    const newDist = THREE.MathUtils.clamp(dist * factor, controls.minDistance, controls.maxDistance);
+
+    // Shift target toward touch point when zooming in
+    if (delta > 0) {
+      const shiftStrength = 0.15;
+      controls.target.lerp(touchStartTarget, shiftStrength);
+    }
+
+    offset.normalize().multiplyScalar(newDist);
+    camera.position.copy(controls.target).add(offset);
+    controls.update();
+
+    // Update for next frame
+    touchStartDistance = currentDistance;
+  }
+}
+
+function onTouchEnd(event) {
+  if (event.touches.length < 2) {
+    isTouchZooming = false;
+    touchStartDistance = 0;
+  }
+}
+
+canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+canvas.addEventListener('touchend', onTouchEnd, { passive: false });
 
 // ───────────── Lighting ─────────────
 
@@ -302,6 +401,9 @@ function rateMuscle(mesh, strength) {
 
 // ───────────── Info Panel ─────────────
 
+// Mobile detection helper
+const isMobile = () => window.innerWidth <= 1024;
+
 const selectionCard = document.getElementById('selection-card');
 const infoName = document.getElementById('info-name');
 const infoType = document.getElementById('info-type');
@@ -319,6 +421,14 @@ infoClose.addEventListener('click', () => {
 });
 
 function showInfoPanel(userData) {
+  if (isMobile()) {
+    showMobileSheet(userData);
+  } else {
+    showDesktopInfoPanel(userData);
+  }
+}
+
+function showDesktopInfoPanel(userData) {
   const data = userData.muscleData;
   const info = data.info;
 
@@ -396,6 +506,225 @@ function showInfoPanel(userData) {
   updateMuscleListSelection();
 }
 
+// ───────────── Mobile Bottom Sheet ─────────────
+
+const mobileSheet = document.getElementById('mobile-rating-sheet');
+const mobileBackdrop = document.getElementById('mobile-rating-backdrop');
+const mobileInfoName = document.getElementById('mobile-info-name');
+const mobileInfoType = document.getElementById('mobile-info-type');
+const mobileInfoNerveBadge = document.getElementById('mobile-info-nerve-badge');
+const mobileInfoDetails = document.getElementById('mobile-info-details');
+const mobileInfoLinks = document.getElementById('mobile-info-links');
+const mobileCurrentRatingLabel = document.getElementById('mobile-current-rating-label');
+const mobileSheetClose = document.getElementById('mobile-sheet-close');
+
+function showMobileSheet(userData) {
+  const data = userData.muscleData;
+  const info = data.info;
+
+  mobileInfoName.textContent = userData.displayName;
+  mobileInfoType.textContent = data.type;
+  mobileInfoType.className = `badge ${data.type}`;
+
+  // Nerve badge
+  const rawName = (data.rawName || '').toLowerCase();
+  const nerves = nerveMeshMap.get(rawName) || [];
+  if (nerves.length > 0) {
+    const nerveLabels = nerves.map(nk => NERVE_GROUPS[nk]?.label || nk).join(', ');
+    mobileInfoNerveBadge.textContent = nerveLabels;
+    mobileInfoNerveBadge.classList.remove('hidden');
+  } else {
+    mobileInfoNerveBadge.classList.add('hidden');
+  }
+
+  // Anatomical details
+  let html = '';
+  if (data.type === 'muscle') {
+    html += `<p><strong>Group:</strong> ${MUSCLE_GROUPS[data.group]?.label || data.group}</p>`;
+    html += `<p><strong>Origin:</strong> ${info.origin}</p>`;
+    html += `<p><strong>Insertion:</strong> ${info.insertion}</p>`;
+    html += `<p><strong>Action:</strong> ${info.action}</p>`;
+    if (info.innervation) {
+      html += `<p><strong>Innervation:</strong> ${info.innervation}</p>`;
+    }
+  } else {
+    html += `<p><strong>Group:</strong> ${MUSCLE_GROUPS[data.group]?.label || data.group}</p>`;
+    html += `<p><strong>From:</strong> ${info.origin}</p>`;
+    html += `<p><strong>To:</strong> ${info.insertion}</p>`;
+    html += `<p><strong>Function:</strong> ${info.action}</p>`;
+    if (info.notes) {
+      html += `<p><strong>Notes:</strong> ${info.notes}</p>`;
+    }
+  }
+  mobileInfoDetails.innerHTML = html;
+
+  // External links
+  mobileInfoLinks.innerHTML = '';
+  const searchTerm = getAnatomySearchTerm(data.rawName);
+  const wikiSearchUrl = `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(searchTerm + ' muscle anatomy')}`;
+  const kenHubUrl = `https://www.kenhub.com/en/search?q=${encodeURIComponent(searchTerm)}`;
+
+  const wikiLink = document.createElement('a');
+  wikiLink.href = wikiSearchUrl;
+  wikiLink.target = '_blank';
+  wikiLink.rel = 'noopener noreferrer';
+  wikiLink.textContent = 'Wikipedia';
+  mobileInfoLinks.appendChild(wikiLink);
+
+  const kenHubLink = document.createElement('a');
+  kenHubLink.href = kenHubUrl;
+  kenHubLink.target = '_blank';
+  kenHubLink.rel = 'noopener noreferrer';
+  kenHubLink.textContent = 'Kenhub';
+  mobileInfoLinks.appendChild(kenHubLink);
+
+  // Update rating button states
+  const ratingKey = userData.ratingKey;
+  const rating = ratingKey ? getRating(ratingKey) : null;
+  updateMobileRatingButtons(rating?.strength || 0);
+
+  // Show/hide clear rating button
+  const mobileClearRatingBtn = document.getElementById('mobile-btn-clear-rating');
+  if (mobileClearRatingBtn) {
+    mobileClearRatingBtn.style.display = rating ? 'block' : 'none';
+  }
+
+  // Show sheet and backdrop
+  mobileBackdrop.classList.add('active');
+  mobileBackdrop.setAttribute('aria-hidden', 'false');
+  mobileSheet.classList.add('active');
+  mobileSheet.setAttribute('aria-hidden', 'false');
+
+  // Highlight in muscle list
+  updateMuscleListSelection();
+}
+
+function hideMobileSheet() {
+  mobileSheet.classList.remove('active');
+  mobileSheet.setAttribute('aria-hidden', 'true');
+  mobileBackdrop.classList.remove('active');
+  mobileBackdrop.setAttribute('aria-hidden', 'true');
+
+  if (selectedMesh) {
+    resetMeshAppearance(selectedMesh);
+    selectedMesh = null;
+  }
+
+  updateMuscleListSelection();
+}
+
+function updateMobileRatingButtons(activeStrength) {
+  document.querySelectorAll('.mobile-rating-btn').forEach(btn => {
+    const r = parseInt(btn.dataset.rating);
+    btn.classList.toggle('active', r === activeStrength);
+  });
+  if (activeStrength > 0) {
+    const level = STRENGTH_LEVELS[activeStrength];
+    mobileCurrentRatingLabel.textContent = `${level.label} (${activeStrength}/5)`;
+  } else {
+    mobileCurrentRatingLabel.textContent = 'Not rated';
+  }
+}
+
+// Mobile sheet event listeners
+mobileSheetClose.addEventListener('click', hideMobileSheet);
+mobileBackdrop.addEventListener('click', hideMobileSheet);
+
+// Swipe to dismiss gesture for mobile sheet
+let sheetStartY = 0;
+let sheetCurrentY = 0;
+let sheetIsDragging = false;
+
+const sheetHandle = document.querySelector('.sheet-handle');
+if (sheetHandle) {
+  sheetHandle.addEventListener('touchstart', (e) => {
+    sheetStartY = e.touches[0].clientY;
+    sheetIsDragging = true;
+    mobileSheet.style.transition = 'none';
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!sheetIsDragging || !mobileSheet.classList.contains('active')) return;
+
+    sheetCurrentY = e.touches[0].clientY;
+    const deltaY = sheetCurrentY - sheetStartY;
+
+    // Only allow dragging down
+    if (deltaY > 0) {
+      mobileSheet.style.transform = `translateY(${deltaY}px)`;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (!sheetIsDragging) return;
+
+    sheetIsDragging = false;
+    mobileSheet.style.transition = '';
+
+    const deltaY = sheetCurrentY - sheetStartY;
+
+    // If dragged down more than 100px, dismiss
+    if (deltaY > 100) {
+      hideMobileSheet();
+    }
+
+    // Reset transform
+    mobileSheet.style.transform = '';
+  }, { passive: true });
+}
+
+// Mobile rating button handlers
+document.querySelectorAll('.mobile-rating-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!selectedMesh) return;
+    const strength = parseInt(btn.dataset.rating);
+    rateMuscle(selectedMesh, strength);
+    updateMobileRatingButtons(strength);
+  });
+});
+
+// Mobile hide part button
+document.getElementById('mobile-btn-hide-part').addEventListener('click', () => {
+  if (!selectedMesh) return;
+
+  hiddenMeshes.add(selectedMesh);
+  selectedMesh.visible = false;
+  resetMeshAppearance(selectedMesh);
+  selectedMesh = null;
+  hideMobileSheet();
+  updateHiddenUI();
+  invalidateVisibleMeshes();
+});
+
+// Mobile clear rating button
+document.getElementById('mobile-btn-clear-rating').addEventListener('click', () => {
+  if (!selectedMesh) return;
+  const ratingKey = selectedMesh.userData.ratingKey;
+  const rating = getRating(ratingKey);
+
+  if (!rating) return;
+
+  showConfirmModal(
+    'Clear Rating',
+    `Clear rating for ${ratingKey}?`,
+    () => {
+      setRating(ratingKey, null);
+
+      const meshes = ratingKeyToMeshes.get(ratingKey) || [];
+      for (const mesh of meshes) {
+        if (mesh !== selectedMesh) {
+          mesh.material = mesh.userData.originalMaterial;
+        }
+      }
+
+      updateMobileRatingButtons(0);
+      updateMuscleListRatings();
+      updateProgressChip();
+      updateStatsFooter();
+    }
+  );
+});
+
 function getAnatomySearchTerm(rawName) {
   let term = rawName.toLowerCase()
     .replace(/\s*\(\d+\)\s*$/, '')
@@ -411,8 +740,12 @@ function getAnatomySearchTerm(rawName) {
 }
 
 function hideInfoPanel() {
-  selectionCard.classList.add('hidden');
-  updateMuscleListSelection();
+  if (isMobile()) {
+    hideMobileSheet();
+  } else {
+    selectionCard.classList.add('hidden');
+    updateMuscleListSelection();
+  }
 }
 
 function updateRatingButtons(activeStrength) {
@@ -1078,6 +1411,45 @@ if (sidebarBackdrop) {
   sidebarBackdrop.addEventListener('click', closeSidebars);
 }
 
+// ───────────── Mobile FAB Menu ─────────────
+
+const fabMenu = document.getElementById('mobile-fab-menu');
+const fabTrigger = document.getElementById('fab-trigger');
+
+if (fabTrigger) {
+  fabTrigger.addEventListener('click', () => {
+    fabMenu.classList.toggle('active');
+  });
+
+  // Close FAB menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (fabMenu.classList.contains('active') && !fabMenu.contains(e.target)) {
+      fabMenu.classList.remove('active');
+    }
+  });
+}
+
+// FAB action handlers
+document.getElementById('fab-action-export-json').addEventListener('click', () => {
+  exportJSON(uniqueRatingKeys.length, ratingKeyToNerves);
+  fabMenu.classList.remove('active');
+});
+
+document.getElementById('fab-action-export-pdf').addEventListener('click', () => {
+  exportPDF(uniqueRatingKeys.length, ratingKeyToNerves);
+  fabMenu.classList.remove('active');
+});
+
+document.getElementById('fab-action-reset').addEventListener('click', () => {
+  resetView();
+  fabMenu.classList.remove('active');
+});
+
+document.getElementById('fab-action-clear').addEventListener('click', () => {
+  document.getElementById('btn-clear-all').click();
+  fabMenu.classList.remove('active');
+});
+
 // ───────────── Export & Clear ─────────────
 
 document.getElementById('btn-export-json').addEventListener('click', () => {
@@ -1164,37 +1536,64 @@ document.addEventListener('keydown', (e) => {
 
 // ───────────── UI Update Helpers ─────────────
 
-function updateUI() {
+function updateProgressChip() {
   const stats = getRatingStats(uniqueRatingKeys.length);
-
-  // Progress bar
   const progressText = document.getElementById('progress-text');
   const progressBar = document.getElementById('progress-bar');
   progressText.textContent = `${stats.rated} / ${stats.total} rated`;
   const pct = stats.total > 0 ? (stats.rated / stats.total * 100) : 0;
   progressBar.style.width = `${pct}%`;
+}
 
-  // Stats footer
+function updateStatsFooter() {
+  const stats = getRatingStats(uniqueRatingKeys.length);
   document.getElementById('stats-rated').textContent = `${stats.rated} rated`;
   document.getElementById('stats-avg').textContent = stats.rated > 0
     ? `Avg: ${stats.average.toFixed(1)}`
     : 'Avg: --';
+}
 
+function updateUI() {
+  updateProgressChip();
+  updateStatsFooter();
   updateMuscleListRatings();
 
   if (selectedMesh) {
     const rk = selectedMesh.userData.ratingKey;
     const rating = rk ? getRating(rk) : null;
-    updateRatingButtons(rating?.strength || 0);
+    if (isMobile()) {
+      updateMobileRatingButtons(rating?.strength || 0);
+    } else {
+      updateRatingButtons(rating?.strength || 0);
+    }
   }
 }
 
-// ───────────── Resize ─────────────
+// ───────────── Resize & Orientation ─────────────
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+
+  // Adjust mobile sheet max-height in landscape
+  if (isMobile() && mobileSheet) {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    mobileSheet.style.maxHeight = isLandscape ? '60vh' : '80vh';
+    const sheetContent = mobileSheet.querySelector('.sheet-content');
+    if (sheetContent) {
+      sheetContent.style.maxHeight = isLandscape ? 'calc(60vh - 32px)' : 'calc(80vh - 32px)';
+    }
+  }
+});
+
+// Handle orientation changes
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }, 100);
 });
 
 // ───────────── Animation Loop ─────────────

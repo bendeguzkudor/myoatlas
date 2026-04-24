@@ -1322,3 +1322,463 @@ kbd {
   background: #c0392b;
   border-color: #c0392b;
 }
+
+/* ───────────── Mobile Rating Bottom Sheet ───────────── */
+
+.mobile-rating-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(2px);
+  z-index: 199;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-rating-backdrop.active {
+  display: block;
+}
+
+.mobile-rating-sheet {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 80vh;
+  background: var(--bg-panel);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.mobile-rating-sheet.active {
+  transform: translateY(0);
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 2px;
+  margin: 12px auto 8px;
+  cursor: grab;
+}
+
+.sheet-content {
+  padding: 0 20px 20px;
+  overflow-y: auto;
+  max-height: calc(80vh - 32px);
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.sheet-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-light);
+  margin: 0;
+  flex: 1;
+  padding-right: 8px;
+}
+
+.sheet-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 28px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.sheet-close-btn:hover {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text);
+}
+
+.sheet-badges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.mobile-rating-section {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-rating-section > label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.mobile-rating-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mobile-rating-btn {
+  min-height: 56px;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: inherit;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #fff;
+}
+
+.mobile-rating-btn[data-rating="1"] {
+  background: var(--rating-1);
+}
+.mobile-rating-btn[data-rating="2"] {
+  background: var(--rating-2);
+}
+.mobile-rating-btn[data-rating="3"] {
+  background: var(--rating-3);
+  color: #333;
+}
+.mobile-rating-btn[data-rating="4"] {
+  background: var(--rating-4);
+}
+.mobile-rating-btn[data-rating="5"] {
+  background: var(--rating-5);
+}
+
+.mobile-rating-btn:active {
+  transform: scale(0.95);
+}
+
+.mobile-rating-btn.active {
+  border-color: #fff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+}
+
+.current-rating-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+}
+
+.sheet-details {
+  border: none;
+  margin-bottom: 16px;
+}
+
+.sheet-details summary {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
+  user-select: none;
+  list-style: none;
+}
+
+.sheet-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.sheet-details summary::after {
+  content: "\25B8";
+  float: right;
+  transition: transform 0.2s;
+}
+
+.sheet-details[open] summary::after {
+  transform: rotate(90deg);
+}
+
+.sheet-details-content {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  padding-top: 8px;
+}
+
+.sheet-details-content p {
+  margin-bottom: 8px;
+}
+
+.sheet-details-content strong {
+  color: var(--text);
+}
+
+.sheet-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sheet-links a {
+  display: inline-block;
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid var(--border);
+  color: var(--accent-light);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.sheet-links a:active {
+  transform: scale(0.95);
+}
+
+.sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sheet-action-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sheet-action-btn.secondary {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.sheet-action-btn.secondary:active {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: var(--accent);
+  color: var(--text);
+  transform: scale(0.98);
+}
+
+.sheet-action-btn.danger {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.sheet-action-btn.danger:active {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: #e74c3c;
+  color: #e74c3c;
+  transform: scale(0.98);
+}
+
+/* Hide desktop selection card on mobile */
+@media (max-width: 1024px) {
+  #selection-card {
+    display: none !important;
+  }
+
+  .mobile-rating-sheet {
+    display: block;
+  }
+}
+
+/* ───────────── Mobile FAB Menu ───────────── */
+
+.mobile-fab-menu {
+  display: none;
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  z-index: 150;
+}
+
+.fab-trigger {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: white;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fab-trigger:active {
+  transform: scale(0.95);
+}
+
+.fab-trigger.active {
+  transform: rotate(45deg);
+}
+
+.fab-action {
+  position: absolute;
+  bottom: 68px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  min-height: 48px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.fab-action .fab-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.fab-action .fab-label {
+  flex: 1;
+}
+
+.fab-action:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.mobile-fab-menu.active .fab-action {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.mobile-fab-menu.active #fab-action-export-json {
+  bottom: 248px;
+  transition-delay: 0.05s;
+}
+
+.mobile-fab-menu.active #fab-action-export-pdf {
+  bottom: 188px;
+  transition-delay: 0.1s;
+}
+
+.mobile-fab-menu.active #fab-action-reset {
+  bottom: 128px;
+  transition-delay: 0.15s;
+}
+
+.mobile-fab-menu.active #fab-action-clear {
+  bottom: 68px;
+  transition-delay: 0.2s;
+}
+
+@media (max-width: 1024px) {
+  .mobile-fab-menu {
+    display: block;
+  }
+}
+
+/* ───────────── Mobile Touch Feedback & Accessibility ───────────── */
+
+/* Remove default tap highlight */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure minimum touch target size on mobile */
+@media (max-width: 1024px) {
+  button,
+  .button-row button,
+  .filter-chip,
+  .muscle-list-item,
+  .search-item {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .rating-btn,
+  .mobile-rating-btn {
+    min-height: 56px;
+  }
+
+  /* Add will-change for performance */
+  .mobile-rating-sheet,
+  .fab-action,
+  .fab-trigger {
+    will-change: transform;
+  }
+
+  /* Landscape adjustments */
+  @media (orientation: landscape) {
+    .mobile-rating-sheet {
+      max-height: 60vh;
+    }
+
+    .sheet-content {
+      max-height: calc(60vh - 32px);
+    }
+  }
+}
+
+/* ARIA and accessibility improvements */
+.mobile-rating-sheet[role="dialog"] {
+  outline: none;
+}
+
+.sheet-close-btn[aria-label="Close"] {
+  cursor: pointer;
+}
+
+/* Loading states */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Focus visible for keyboard navigation */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

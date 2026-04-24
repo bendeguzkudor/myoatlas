@@ -314,6 +314,29 @@
         </button>
         <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
 
+        <!-- Mobile FAB Menu -->
+        <div id="mobile-fab-menu" class="mobile-fab-menu">
+          <button id="fab-action-export-json" class="fab-action" title="Export JSON">
+            <span class="fab-icon">📄</span>
+            <span class="fab-label">Export JSON</span>
+          </button>
+          <button id="fab-action-export-pdf" class="fab-action" title="Export PDF">
+            <span class="fab-icon">📋</span>
+            <span class="fab-label">Export PDF</span>
+          </button>
+          <button id="fab-action-reset" class="fab-action" title="Reset View">
+            <span class="fab-icon">🔄</span>
+            <span class="fab-label">Reset View</span>
+          </button>
+          <button id="fab-action-clear" class="fab-action" title="Clear All">
+            <span class="fab-icon">🗑️</span>
+            <span class="fab-label">Clear All</span>
+          </button>
+          <button id="fab-trigger" class="fab-trigger" title="Quick Actions">
+            +
+          </button>
+        </div>
+
         <!-- Custom Confirmation Modal -->
         <div id="confirm-modal" class="modal hidden">
           <div class="modal-content">
@@ -322,6 +345,48 @@
             <div class="modal-actions">
               <button id="confirm-cancel" class="modal-btn cancel">Cancel</button>
               <button id="confirm-ok" class="modal-btn confirm">Confirm</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Rating Bottom Sheet -->
+        <div id="mobile-rating-backdrop" class="mobile-rating-backdrop" aria-hidden="true"></div>
+        <div id="mobile-rating-sheet" class="mobile-rating-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-info-name">
+          <div class="sheet-handle" aria-label="Drag to dismiss"></div>
+          <div class="sheet-content">
+            <div class="sheet-header">
+              <h2 id="mobile-info-name"></h2>
+              <button id="mobile-sheet-close" class="sheet-close-btn" aria-label="Close">&times;</button>
+            </div>
+            <div id="mobile-info-badges" class="sheet-badges">
+              <span id="mobile-info-type" class="badge"></span>
+              <span id="mobile-info-nerve-badge" class="badge nerve hidden"></span>
+            </div>
+
+            <!-- Mobile Rating Buttons -->
+            <div class="mobile-rating-section">
+              <label>Strength Rating</label>
+              <div id="mobile-rating-buttons" class="mobile-rating-buttons">
+                <button class="mobile-rating-btn" data-rating="1" title="Very Weak">1</button>
+                <button class="mobile-rating-btn" data-rating="2" title="Weak">2</button>
+                <button class="mobile-rating-btn" data-rating="3" title="Moderate">3</button>
+                <button class="mobile-rating-btn" data-rating="4" title="Strong">4</button>
+                <button class="mobile-rating-btn" data-rating="5" title="Very Strong">5</button>
+              </div>
+              <span id="mobile-current-rating-label" class="current-rating-label"></span>
+            </div>
+
+            <!-- Collapsible Details -->
+            <details class="sheet-details" open>
+              <summary>Details</summary>
+              <div id="mobile-info-details" class="sheet-details-content"></div>
+              <div id="mobile-info-links" class="sheet-links"></div>
+            </details>
+
+            <!-- Quick Actions -->
+            <div class="sheet-actions">
+              <button id="mobile-btn-hide-part" class="sheet-action-btn secondary">Hide This Part</button>
+              <button id="mobile-btn-clear-rating" class="sheet-action-btn danger">Clear Rating</button>
             </div>
           </div>
         </div>
