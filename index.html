@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyoAtlas</title>
+    <meta
+      name="description"
+      content="Interactive 3D muscle anatomy viewer with strength rating and nerve innervation mapping"
+    />
+    <meta name="theme-color" content="#0f172a" />
+    <meta property="og:title" content="MyoAtlas — 3D Muscle Anatomy Viewer" />
+    <meta
+      property="og:description"
+      content="Interactive 3D muscle anatomy viewer with strength rating and nerve innervation mapping"
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="canvas3d"></canvas>
+
+      <!-- Loading overlay -->
+      <div id="loading-overlay">
+        <div id="loading-content">
+          <div id="loading-icon"></div>
+          <h2>MyoAtlas</h2>
+          <p id="loading-text">Loading anatomy model... 0%</p>
+          <div id="loading-bar-track">
+            <div id="loading-bar"></div>
+          </div>
+          <p class="loading-credit">
+            BodyParts3D, &copy; The Database Center for Life Science<br />licensed
+            under CC Attribution-Share Alike 2.1 Japan
+          </p>
+          <p class="loading-credit">
+            Z-Anatomy by Gauthier Kervyn<br />licensed under CC BY-SA 4.0
+          </p>
+        </div>
+      </div>
+
+      <div id="ui-overlay">
+        <!-- Top Bar -->
+        <header id="top-bar">
+          <span class="app-title" style="display: none">MyoAtlas</span>
+          <h1 class="main-title">Dr Cigány</h1>
+          <div id="progress-chip">
+            <span id="progress-text">0 / 0 rated</span>
+            <div id="progress-bar-track">
+              <div id="progress-bar"></div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Left Sidebar - Priority Muscles -->
+        <aside id="left-sidebar">
+          <!-- Mode Toggle -->
+          <div class="sidebar-section">
+            <label>Display Mode</label>
+            <div class="button-row" style="margin-bottom: 10px">
+              <button
+                id="btn-full-mode"
+                class="active"
+                title="Show all muscles and features"
+              >
+                Full Model
+              </button>
+              <button id="btn-priority-mode" title="Load only priority muscles">
+                Priority Only
+              </button>
+            </div>
+            <div
+              id="mode-description"
+              style="
+                font-size: 10px;
+                color: var(--text-muted);
+                margin-top: 8px;
+                line-height: 1.4;
+              "
+            >
+              Full Model: All 467 muscles loaded. Use filters below to focus on
+              priorities.
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div class="sidebar-section">
+            <label for="search">Search Muscle</label>
+            <input
+              type="text"
+              id="search"
+              placeholder="e.g. Biceps, Deltoid..."
+              autocomplete="off"
+            />
+            <div id="search-results"></div>
+          </div>
+
+          <!-- Priority Filter (only in full mode) -->
+          <div class="sidebar-section" id="priority-filter-section">
+            <label>Filter List</label>
+            <div class="button-row" style="margin-bottom: 10px">
+              <button
+                id="btn-all-muscles"
+                class="active"
+                title="Show all muscles in list"
+              >
+                All
+              </button>
+              <button
+                id="btn-priority-only"
+                title="Show priority muscles only in list"
+              >
+                Priority
+              </button>
+            </div>
+          </div>
+
+          <!-- Muscle List -->
+          <div id="muscle-list-section">
+            <label>Muscles <span id="muscle-list-count"></span></label>
+            <div id="muscle-list"></div>
+          </div>
+
+          <!-- Hidden Parts -->
+          <div id="hidden-panel" class="hidden">
+            <div class="hidden-panel-header">
+              <label>Hidden Parts (<span id="hidden-count">0</span>)</label>
+              <button id="btn-show-all" title="Restore all hidden parts">
+                Show All
+              </button>
+            </div>
+            <ul id="hidden-list"></ul>
+          </div>
+        </aside>
+
+        <!-- Single Right Sidebar -->
+        <aside id="sidebar">
+          <!-- Grouping + Filters -->
+          <div class="sidebar-section" style="display: none">
+            <label>Group By</label>
+            <div
+              class="button-row"
+              id="group-toggle"
+              style="margin-bottom: 10px"
+            >
+              <button
+                id="btn-group-anatomy"
+                class="active"
+                title="Group by anatomical region"
+              >
+                Anatomy
+              </button>
+              <button id="btn-group-nerve" title="Group by nerve innervation">
+                Nerve
+              </button>
+            </div>
+            <div id="muscle-group-filters"></div>
+          </div>
+
+          <!-- Settings (collapsible, open by default) -->
+          <details id="settings-section" open>
+            <summary>Settings</summary>
+            <div class="settings-content">
+              <div class="button-row">
+                <button id="btn-front" title="Front view">Front</button>
+                <button id="btn-back" title="Back view">Back</button>
+                <button id="btn-side" title="Side view">Side</button>
+                <button id="btn-reset" title="Reset view">Reset</button>
+              </div>
+              <div class="toggle-row">
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-skeleton" checked />
+                  <span>Show Skeleton</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-tendons" checked />
+                  <span>Show Tendons</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" id="toggle-group-heads" checked />
+                  <span>Group Muscle Heads</span>
+                </label>
+              </div>
+              <div
+                style="
+                  font-size: 10px;
+                  color: var(--text-muted);
+                  margin-top: 8px;
+                  line-height: 1.4;
+                "
+              >
+                Group Muscle Heads: Rate triceps heads together vs separately
+                (updates instantly).
+              </div>
+              <div>
+                <div class="slider-label">Muscle Transparency</div>
+                <input
+                  type="range"
+                  id="muscle-opacity-slider"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value="1"
+                />
+              </div>
+              <div>
+                <div class="slider-label">Skeleton Transparency</div>
+                <input
+                  type="range"
+                  id="skeleton-opacity-slider"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value="0.6"
+                />
+              </div>
+            </div>
+          </details>
+
+          <!-- Selection Card + Rating (hidden by default) -->
+          <div id="selection-card" class="hidden">
+            <button id="info-close">&times;</button>
+            <h2 id="info-name"></h2>
+            <div id="info-badges">
+              <span id="info-type" class="badge"></span>
+              <span id="info-nerve-badge" class="badge nerve hidden"></span>
+            </div>
+
+            <!-- Rating Buttons -->
+            <div id="rating-section">
+              <label>Strength Rating</label>
+              <div id="rating-buttons">
+                <button class="rating-btn" data-rating="1" title="Very Weak">
+                  1
+                </button>
+                <button class="rating-btn" data-rating="2" title="Weak">
+                  2
+                </button>
+                <button class="rating-btn" data-rating="3" title="Moderate">
+                  3
+                </button>
+                <button class="rating-btn" data-rating="4" title="Strong">
+                  4
+                </button>
+                <button class="rating-btn" data-rating="5" title="Very Strong">
+                  5
+                </button>
+              </div>
+              <span id="current-rating-label"></span>
+              <button id="btn-clear-rating" class="secondary-btn" title="Clear this muscle's rating">
+                Clear Rating
+              </button>
+            </div>
+
+            <!-- Anatomical Details -->
+            <div id="info-details"></div>
+            <div id="info-links"></div>
+
+            <!-- Actions -->
+            <div id="info-actions">
+              <button id="btn-hide-part" title="Hide this part from the model">
+                Hide This Part
+              </button>
+            </div>
+          </div>
+
+          <!-- Export + Stats -->
+          <div id="export-section">
+            <div class="button-row">
+              <button id="btn-export-json" title="Export ratings as JSON">
+                Export JSON
+              </button>
+              <button id="btn-export-pdf" title="Export ratings as PDF">
+                Export PDF
+              </button>
+              <button id="btn-clear-all" title="Clear all ratings">
+                Clear All
+              </button>
+            </div>
+            <div id="stats-footer">
+              <span id="stats-rated">0 rated</span>
+              <span id="stats-avg">Avg: --</span>
+            </div>
+          </div>
+
+          <!-- Attribution -->
+          <div id="attribution">
+            BodyParts3D (CC BY-SA 2.1 JP) + Z-Anatomy (CC BY-SA 4.0)
+          </div>
+        </aside>
+
+        <!-- Keyboard shortcuts hint -->
+        <div id="shortcuts-hint">
+          <p>
+            <kbd>1</kbd>-<kbd>5</kbd> Rate &bull; <kbd>Esc</kbd> Deselect &bull;
+            <kbd>R</kbd> Reset View
+          </p>
+        </div>
+
+        <!-- Mobile Menu Toggles -->
+        <button id="mobile-menu-left" class="mobile-menu-toggle" title="Toggle muscle list">
+          ☰
+        </button>
+        <button id="mobile-menu-right" class="mobile-menu-toggle" title="Toggle settings">
+          ⚙
+        </button>
+        <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+        <!-- Custom Confirmation Modal -->
+        <div id="confirm-modal" class="modal hidden">
+          <div class="modal-content">
+            <h3 id="confirm-title"></h3>
+            <p id="confirm-message"></p>
+            <div class="modal-actions">
+              <button id="confirm-cancel" class="modal-btn cancel">Cancel</button>
+              <button id="confirm-ok" class="modal-btn confirm">Confirm</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
