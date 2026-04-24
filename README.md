@@ -11,6 +11,7 @@ Interactive 3D muscle anatomy viewer with strength rating and nerve innervation 
 - **Anatomical details**: origin, insertion, action, innervation for 100+ muscles
 - **Export**: JSON and PDF reports grouped by nerve
 - **Keyboard shortcuts**: 1-5 rate, Esc deselect, R reset view
+- **Mobile optimized**: Two-finger pinch zoom, bottom sheet UI, FAB quick actions
 
 ## Getting Started
 

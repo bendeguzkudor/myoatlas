@@ -72,3 +72,24 @@ npm run preview  # Preview production build
 - Muscles can belong to multiple nerves (e.g. flexor digitorum profundus → median + ulnar).
 - The `mesh_mapping.json` names use spaces but GLTFLoader converts spaces to underscores in node names — bodyBuilder.js normalizes for lookup.
 - Rating materials are shared instances. Opacity changes via sliders mutate them in place.
+
+## Mobile UX (2026-04-24)
+
+Complete mobile redesign with touch-first interface. See `MOBILE-UX.md` for full details.
+
+**Key features:**
+- Two-finger pinch zoom (touch event handlers, raycasting at midpoint)
+- Bottom sheet rating modal (slides up, 56px touch targets, swipe-to-dismiss)
+- FAB menu (quick access to export/reset/clear, staggered animations)
+- Full desktop compatibility (scoped via `@media (max-width: 1024px)` and `isMobile()`)
+
+**Architecture:**
+- `isMobile()` helper: `window.innerWidth <= 1024`
+- Mobile sheet: z-index 200, max-height 80vh (60vh landscape)
+- FAB menu: z-index 150, staggered reveal with 50ms delays
+- Desktop selection card hidden on mobile: `display: none !important`
+
+**Code locations:**
+- Touch zoom: `main.js` lines 51-100, 168-249
+- Mobile sheet: `main.js` lines 372-621, `styles.css` lines 1327-1625
+- FAB menu: `main.js` lines 1230-1263, `styles.css` lines 1627-1728
