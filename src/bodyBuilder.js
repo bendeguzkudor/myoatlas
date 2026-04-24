@@ -72,12 +72,13 @@ export const highlightMaterial = new THREE.MeshStandardMaterial({
   flatShading: false,
 });
 
-// Selected material — brighter highlight
+// Selected material — brighter highlight with strong emissive for pulsing
 export const selectedMaterial = new THREE.MeshStandardMaterial({
   color: new THREE.Color(0.7, 0.92, 1.0),
   roughness: 0.35,
   metalness: 0.0,
-  emissive: new THREE.Color(0.1, 0.2, 0.3),
+  emissive: new THREE.Color(0.3, 0.6, 1.0), // Bright blue emissive base
+  emissiveIntensity: 1.0,
   side: THREE.DoubleSide,
   flatShading: false,
 });

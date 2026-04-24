@@ -1690,31 +1690,33 @@ function animate() {
   requestAnimationFrame(animate);
   controls.update();
 
-  // Pulsing effect on selected material for better visibility
+  // Pulsing effect on selected material for MAXIMUM visibility
   if (selectedMesh && selectedMesh.material === selectedMaterial) {
-    const time = Date.now() * 0.002; // Slower pulse speed
+    const time = Date.now() * 0.004; // Faster pulse for more noticeable effect
     const pulse = Math.sin(time) * 0.5 + 0.5; // 0 to 1
 
-    // Pulse the emissive color for a dramatic glowing effect
-    const baseEmissive = 0.2;
-    const pulseEmissive = baseEmissive + (pulse * 0.6); // Pulse between 0.2 and 0.8
+    // VERY dramatic emissive glow - pulse from dim to super bright
+    const minEmissive = 0.3;
+    const maxEmissive = 1.5; // Go beyond 1.0 for extra brightness
+    const pulseEmissive = minEmissive + (pulse * (maxEmissive - minEmissive));
     selectedMaterial.emissive.setRGB(
-      pulseEmissive * 0.3,
-      pulseEmissive * 0.6,
-      pulseEmissive
+      pulseEmissive * 0.4,  // Cyan/blue glow
+      pulseEmissive * 0.8,
+      pulseEmissive * 1.0
     );
 
-    // Also pulse the base color for extra visibility
-    const baseColor = 0.6;
-    const pulseColor = baseColor + (pulse * 0.3); // Pulse between 0.6 and 0.9
+    // Strong color pulse too
+    const minColor = 0.5;
+    const maxColor = 1.0;
+    const pulseColor = minColor + (pulse * (maxColor - minColor));
     selectedMaterial.color.setRGB(
-      pulseColor,
-      pulseColor + 0.25,
-      1.0
+      pulseColor * 0.7,
+      pulseColor * 0.92,
+      pulseColor * 1.0
     );
 
-    // Mark material as needing update
-    selectedMaterial.needsUpdate = true;
+    // Increase emissive intensity for extra glow
+    selectedMaterial.emissiveIntensity = 1.0 + (pulse * 2.0); // 1.0 to 3.0
   }
 
   renderer.render(scene, camera);
