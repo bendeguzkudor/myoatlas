@@ -363,6 +363,9 @@ function onClick(event) {
     selectedMesh = mesh;
     mesh.material = selectedMaterial;
     showInfoPanel(mesh.userData);
+
+    // Zoom to the selected muscle
+    zoomToMesh(mesh);
   } else {
     hideInfoPanel();
   }
@@ -1688,27 +1691,30 @@ function animate() {
   controls.update();
 
   // Pulsing effect on selected material for better visibility
-  if (selectedMesh) {
-    const time = Date.now() * 0.003; // Pulse speed
+  if (selectedMesh && selectedMesh.material === selectedMaterial) {
+    const time = Date.now() * 0.002; // Slower pulse speed
     const pulse = Math.sin(time) * 0.5 + 0.5; // 0 to 1
 
-    // Pulse the emissive color for a glowing effect
-    const baseEmissive = 0.1;
-    const pulseEmissive = baseEmissive + (pulse * 0.3); // Pulse between 0.1 and 0.4
+    // Pulse the emissive color for a dramatic glowing effect
+    const baseEmissive = 0.2;
+    const pulseEmissive = baseEmissive + (pulse * 0.6); // Pulse between 0.2 and 0.8
     selectedMaterial.emissive.setRGB(
-      pulseEmissive,
-      pulseEmissive * 2,
-      pulseEmissive * 3
+      pulseEmissive * 0.3,
+      pulseEmissive * 0.6,
+      pulseEmissive
     );
 
-    // Also pulse the color slightly for extra visibility
-    const baseColor = 0.7;
-    const pulseColor = baseColor + (pulse * 0.2); // Pulse between 0.7 and 0.9
+    // Also pulse the base color for extra visibility
+    const baseColor = 0.6;
+    const pulseColor = baseColor + (pulse * 0.3); // Pulse between 0.6 and 0.9
     selectedMaterial.color.setRGB(
       pulseColor,
-      pulseColor + 0.22,
+      pulseColor + 0.25,
       1.0
     );
+
+    // Mark material as needing update
+    selectedMaterial.needsUpdate = true;
   }
 
   renderer.render(scene, camera);
