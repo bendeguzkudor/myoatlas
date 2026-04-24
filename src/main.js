@@ -867,11 +867,14 @@ const searchInput = document.getElementById('search');
 const searchResults = document.getElementById('search-results');
 
 let searchDebounceTimer = null;
+let selectedResultIndex = -1;
+
 searchInput.addEventListener('input', () => {
   clearTimeout(searchDebounceTimer);
   searchDebounceTimer = setTimeout(() => {
     const query = searchInput.value.toLowerCase().trim();
     searchResults.innerHTML = '';
+    selectedResultIndex = -1;
 
     if (query.length < 2 || muscleMeshes.length === 0) return;
 
@@ -879,7 +882,30 @@ searchInput.addEventListener('input', () => {
       m.userData.displayName.toLowerCase().includes(query)
     );
 
-    for (const mesh of matches.slice(0, 10)) {
+    // Show ALL results with count indicator
+    const resultCount = matches.length;
+    const maxDisplay = 50; // Reasonable limit for performance
+
+    if (resultCount === 0) {
+      const emptyState = document.createElement('div');
+      emptyState.className = 'search-empty';
+      emptyState.innerHTML = `
+        <span class="search-empty-icon">🔍</span>
+        <p>No muscles found for "${query}"</p>
+      `;
+      searchResults.appendChild(emptyState);
+      return;
+    }
+
+    // Add result count header
+    const countHeader = document.createElement('div');
+    countHeader.className = 'search-count';
+    countHeader.textContent = `${resultCount} result${resultCount !== 1 ? 's' : ''}`;
+    searchResults.appendChild(countHeader);
+
+    const displayMatches = matches.slice(0, maxDisplay);
+
+    for (const mesh of displayMatches) {
       const div = document.createElement('div');
       div.className = 'search-item';
       div.textContent = mesh.userData.displayName;
@@ -890,12 +916,53 @@ searchInput.addEventListener('input', () => {
         showInfoPanel(mesh.userData);
         searchInput.value = '';
         searchResults.innerHTML = '';
+        selectedResultIndex = -1;
         zoomToMesh(mesh);
       });
       searchResults.appendChild(div);
     }
+
+    // Add "X more" indicator if truncated
+    if (resultCount > maxDisplay) {
+      const moreDiv = document.createElement('div');
+      moreDiv.className = 'search-more';
+      moreDiv.textContent = `+ ${resultCount - maxDisplay} more (refine search)`;
+      searchResults.appendChild(moreDiv);
+    }
   }, 150);
 });
+
+// Keyboard navigation for search
+searchInput.addEventListener('keydown', (e) => {
+  const items = searchResults.querySelectorAll('.search-item');
+  if (items.length === 0) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    selectedResultIndex = Math.min(selectedResultIndex + 1, items.length - 1);
+    updateSelectedResult(items);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    selectedResultIndex = Math.max(selectedResultIndex - 1, -1);
+    updateSelectedResult(items);
+  } else if (e.key === 'Enter' && selectedResultIndex >= 0) {
+    e.preventDefault();
+    items[selectedResultIndex].click();
+  } else if (e.key === 'Escape') {
+    searchResults.innerHTML = '';
+    searchInput.value = '';
+    selectedResultIndex = -1;
+  }
+});
+
+function updateSelectedResult(items) {
+  items.forEach((item, i) => {
+    item.classList.toggle('selected', i === selectedResultIndex);
+  });
+  if (selectedResultIndex >= 0) {
+    items[selectedResultIndex].scrollIntoView({ block: 'nearest' });
+  }
+}
 
 function zoomToMesh(mesh) {
   mesh.geometry.computeBoundingBox();
@@ -1142,17 +1209,18 @@ function appendGroupSection(label, ratingKeys) {
     item.className = 'muscle-list-item';
     item.dataset.ratingKey = rk;
 
-    const dot = document.createElement('span');
-    dot.className = 'rating-dot';
+    // Set data-rating attribute for CSS styling (no dots)
     const rating = getRating(rk);
-    if (rating) dot.classList.add(`rated-${rating.strength}`);
+    if (rating) {
+      item.setAttribute('data-rating', rating.strength);
+    }
 
     const name = document.createElement('span');
     name.className = 'muscle-list-name';
     name.textContent = rk;
     name.title = rk;
 
-    item.appendChild(dot);
+    // No longer using dot - background tint via CSS data-rating attribute
     item.appendChild(name);
 
     // Add priority star if this is a priority muscle
@@ -1199,12 +1267,14 @@ function updateMuscleListSelection() {
 function updateMuscleListRatings() {
   document.querySelectorAll('.muscle-list-item').forEach(item => {
     const rk = item.dataset.ratingKey;
-    const dot = item.querySelector('.rating-dot');
-    if (!dot) return;
-
-    dot.className = 'rating-dot';
     const rating = getRating(rk);
-    if (rating) dot.classList.add(`rated-${rating.strength}`);
+
+    // Update data-rating attribute for CSS styling
+    if (rating) {
+      item.setAttribute('data-rating', rating.strength);
+    } else {
+      item.removeAttribute('data-rating');
+    }
   });
 }
 
