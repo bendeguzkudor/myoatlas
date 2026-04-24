@@ -391,12 +391,27 @@ function rateMuscle(mesh, strength) {
   const meshes = ratingKeyToMeshes.get(ratingKey) || [];
   const mat = getRatingMaterial(strength);
   for (const m of meshes) {
-    if (m !== selectedMesh) {
-      m.material = mat;
-    }
+    m.material = mat; // Apply to all meshes including selected
   }
 
   updateUI();
+
+  // Clear selection highlight so user can see the new color
+  if (selectedMesh) {
+    selectedMesh = null;
+  }
+
+  // Hide info panel/sheet
+  hideInfoPanel();
+
+  // Return to front view after rating for better workflow
+  setTimeout(() => {
+    const dist = defaultCameraPos.distanceTo(defaultLookAt);
+    animateCamera(
+      new THREE.Vector3(defaultLookAt.x, defaultLookAt.y, defaultLookAt.z + dist),
+      defaultLookAt.clone(), 800
+    );
+  }, 300); // Small delay so user sees the rating applied
 }
 
 // ───────────── Info Panel ─────────────
@@ -1671,6 +1686,31 @@ window.addEventListener('orientationchange', () => {
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+
+  // Pulsing effect on selected material for better visibility
+  if (selectedMesh) {
+    const time = Date.now() * 0.003; // Pulse speed
+    const pulse = Math.sin(time) * 0.5 + 0.5; // 0 to 1
+
+    // Pulse the emissive color for a glowing effect
+    const baseEmissive = 0.1;
+    const pulseEmissive = baseEmissive + (pulse * 0.3); // Pulse between 0.1 and 0.4
+    selectedMaterial.emissive.setRGB(
+      pulseEmissive,
+      pulseEmissive * 2,
+      pulseEmissive * 3
+    );
+
+    // Also pulse the color slightly for extra visibility
+    const baseColor = 0.7;
+    const pulseColor = baseColor + (pulse * 0.2); // Pulse between 0.7 and 0.9
+    selectedMaterial.color.setRGB(
+      pulseColor,
+      pulseColor + 0.22,
+      1.0
+    );
+  }
+
   renderer.render(scene, camera);
 }
 
