@@ -1664,15 +1664,8 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 
-  // Adjust mobile sheet max-height in landscape
-  if (isMobile() && mobileSheet) {
-    const isLandscape = window.innerWidth > window.innerHeight;
-    mobileSheet.style.maxHeight = isLandscape ? '60vh' : '80vh';
-    const sheetContent = mobileSheet.querySelector('.sheet-content');
-    if (sheetContent) {
-      sheetContent.style.maxHeight = isLandscape ? 'calc(60vh - 32px)' : 'calc(80vh - 32px)';
-    }
-  }
+  // Mobile sheet height is driven by CSS (max-height caps the expanded state,
+  // collapsed state hugs content). Landscape cap is handled by the media query.
 });
 
 // Handle orientation changes

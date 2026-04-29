@@ -358,14 +358,9 @@
               <h2 id="mobile-info-name"></h2>
               <button id="mobile-sheet-close" class="sheet-close-btn" aria-label="Close">&times;</button>
             </div>
-            <div id="mobile-info-badges" class="sheet-badges">
-              <span id="mobile-info-type" class="badge"></span>
-              <span id="mobile-info-nerve-badge" class="badge nerve hidden"></span>
-            </div>
 
-            <!-- Mobile Rating Buttons -->
+            <!-- Mobile Rating Buttons (always visible) -->
             <div class="mobile-rating-section">
-              <label>Strength Rating</label>
               <div id="mobile-rating-buttons" class="mobile-rating-buttons">
                 <button class="mobile-rating-btn" data-rating="1" title="Very Weak">1</button>
                 <button class="mobile-rating-btn" data-rating="2" title="Weak">2</button>
@@ -376,18 +371,20 @@
               <span id="mobile-current-rating-label" class="current-rating-label"></span>
             </div>
 
-            <!-- Collapsible Details -->
-            <details class="sheet-details" open>
-              <summary>Details</summary>
+            <!-- Everything else collapses into one expandable section -->
+            <details class="sheet-details sheet-more">
+              <summary>More info</summary>
+              <div id="mobile-info-badges" class="sheet-badges">
+                <span id="mobile-info-type" class="badge"></span>
+                <span id="mobile-info-nerve-badge" class="badge nerve hidden"></span>
+              </div>
               <div id="mobile-info-details" class="sheet-details-content"></div>
               <div id="mobile-info-links" class="sheet-links"></div>
+              <div class="sheet-actions">
+                <button id="mobile-btn-hide-part" class="sheet-action-btn secondary">Hide This Part</button>
+                <button id="mobile-btn-clear-rating" class="sheet-action-btn danger">Clear Rating</button>
+              </div>
             </details>
-
-            <!-- Quick Actions -->
-            <div class="sheet-actions">
-              <button id="mobile-btn-hide-part" class="sheet-action-btn secondary">Hide This Part</button>
-              <button id="mobile-btn-clear-rating" class="sheet-action-btn danger">Clear Rating</button>
-            </div>
           </div>
         </div>
       </div>
