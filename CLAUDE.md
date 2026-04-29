@@ -50,14 +50,24 @@ npm run build    # Production build to dist/
 npm run preview  # Preview production build
 ```
 
-## Design System
+## Design System ("Midnight Glass")
 
-- Background: `#0f172a` (slate-900)
-- Accent: `#0ea5e9` (sky-500)
-- Font: Inter (Google Fonts)
-- Panels: solid `rgba(15,23,42,0.95)`, no backdrop-filter blur
-- Borders: `rgba(148,163,184,0.15)`
-- Layout: 48px top bar + 360px right sidebar
+- Canvas background: `#0F1115`
+- Panel background: `rgba(24,27,33,0.85)` with `backdrop-filter: blur(24px) saturate(140%)`
+- Accent: `#3B82F6` (blue-500); selected mesh: `#60A5FA`
+- Font: Inter 400/500/600/700 (Google Fonts)
+- Borders: `rgba(255,255,255,0.1)` 1px rim on all glass surfaces
+- Layout: 64px top bar + floating 320px left + 360px right sidebars (12px margin, 16px radius)
+- Rating palette (1-5, MRC-style): `#EF4444` · `#F97316` · `#F59E0B` · `#84CC16` · `#10B981`
+- Muscle list active state: 3px blue left pill + `rgba(59,130,246,0.1)` tint
+- Rating control: segmented (flex row, recessed black/40 bg, active = grade-color fill + glow)
+- Export PDF: capsule primary button, accent glow shadow
+
+**Legacy CSS aliases in `:root`:** `--text`, `--text-muted`, `--bg-dark`, `--accent-light` point to the new tokens so existing references keep working.
+
+**Deferred from redesign.md (architectural cost):**
+- Per-mesh hover emission boost (would break shared-material perf optimization).
+- Selection ghosting (non-selected muscles to opacity 0.3) — conflicts with the `muscle-opacity-slider` which mutates shared materials; needs a base-opacity + multiplier refactor to coexist.
 
 ## Data Sources
 

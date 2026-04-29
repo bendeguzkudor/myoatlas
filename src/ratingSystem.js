@@ -9,11 +9,11 @@ import * as THREE from 'three';
 // ───────────── Strength Level Definitions ─────────────
 
 export const STRENGTH_LEVELS = {
-  1: { label: 'Very Weak', color: '#e74c3c', shortLabel: '1' },
-  2: { label: 'Weak', color: '#e67e22', shortLabel: '2' },
-  3: { label: 'Moderate', color: '#f1c40f', shortLabel: '3' },
-  4: { label: 'Strong', color: '#2ecc71', shortLabel: '4' },
-  5: { label: 'Very Strong', color: '#27ae60', shortLabel: '5' },
+  1: { label: 'Very Weak', color: '#EF4444', shortLabel: '1' },
+  2: { label: 'Weak', color: '#F97316', shortLabel: '2' },
+  3: { label: 'Moderate', color: '#F59E0B', shortLabel: '3' },
+  4: { label: 'Strong', color: '#84CC16', shortLabel: '4' },
+  5: { label: 'Very Strong', color: '#10B981', shortLabel: '5' },
 };
 
 // ───────────── Rating Materials (5 shared instances) ─────────────

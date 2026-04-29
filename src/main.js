@@ -1690,33 +1690,30 @@ function animate() {
   requestAnimationFrame(animate);
   controls.update();
 
-  // Pulsing effect on selected material for MAXIMUM visibility
+  // Pulsing effect on selected material — clinical blue (#60A5FA / #3B82F6)
   if (selectedMesh && selectedMesh.material === selectedMaterial) {
-    const time = Date.now() * 0.004; // Faster pulse for more noticeable effect
+    const time = Date.now() * 0.004;
     const pulse = Math.sin(time) * 0.5 + 0.5; // 0 to 1
 
-    // VERY dramatic emissive glow - pulse from dim to super bright
+    // Emissive pulse driven against the accent hue (#3B82F6 = 0.231, 0.510, 0.965)
     const minEmissive = 0.3;
-    const maxEmissive = 1.5; // Go beyond 1.0 for extra brightness
+    const maxEmissive = 1.3;
     const pulseEmissive = minEmissive + (pulse * (maxEmissive - minEmissive));
     selectedMaterial.emissive.setRGB(
-      pulseEmissive * 0.4,  // Cyan/blue glow
-      pulseEmissive * 0.8,
-      pulseEmissive * 1.0
+      pulseEmissive * 0.231,
+      pulseEmissive * 0.510,
+      pulseEmissive * 0.965
     );
 
-    // Strong color pulse too
-    const minColor = 0.5;
-    const maxColor = 1.0;
-    const pulseColor = minColor + (pulse * (maxColor - minColor));
+    // Color breathes between #3B82F6 and #60A5FA
+    const tC = 0.4 + pulse * 0.6;
     selectedMaterial.color.setRGB(
-      pulseColor * 0.7,
-      pulseColor * 0.92,
-      pulseColor * 1.0
+      0.231 + (0.376 - 0.231) * tC,
+      0.510 + (0.647 - 0.510) * tC,
+      0.965 + (0.980 - 0.965) * tC
     );
 
-    // Increase emissive intensity for extra glow
-    selectedMaterial.emissiveIntensity = 1.0 + (pulse * 2.0); // 1.0 to 3.0
+    selectedMaterial.emissiveIntensity = 0.9 + (pulse * 1.4); // 0.9 → 2.3
   }
 
   renderer.render(scene, camera);

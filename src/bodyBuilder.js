@@ -62,22 +62,25 @@ export const boneMaterial = new THREE.MeshStandardMaterial({
   depthWrite: false, // avoids z-fighting artifacts with transparent bones
 });
 
-// Highlight material — used temporarily when hovering/selecting
+// Highlight material — used on hover. Subtle "brightness bump" feel:
+// nearly the original muscle color but with a soft emissive lift so the
+// hovered mesh glows slightly without reading as a color swap.
 export const highlightMaterial = new THREE.MeshStandardMaterial({
-  color: new THREE.Color(0.55, 0.85, 1.0),
+  color: new THREE.Color(0.88, 0.82, 0.78),
   roughness: 0.4,
   metalness: 0.0,
-  emissive: new THREE.Color(0.05, 0.15, 0.25),
+  emissive: new THREE.Color(0.18, 0.22, 0.28),
+  emissiveIntensity: 0.6,
   side: THREE.DoubleSide,
   flatShading: false,
 });
 
-// Selected material — brighter highlight with strong emissive for pulsing
+// Selected material — redesign.md "mesh-selected" #60A5FA clinical blue
 export const selectedMaterial = new THREE.MeshStandardMaterial({
-  color: new THREE.Color(0.7, 0.92, 1.0),
+  color: new THREE.Color(0.376, 0.647, 0.98), // #60A5FA
   roughness: 0.35,
   metalness: 0.0,
-  emissive: new THREE.Color(0.3, 0.6, 1.0), // Bright blue emissive base
+  emissive: new THREE.Color(0.231, 0.510, 0.965), // #3B82F6
   emissiveIntensity: 1.0,
   side: THREE.DoubleSide,
   flatShading: false,
