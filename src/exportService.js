@@ -1,10 +1,12 @@
 /**
- * Export service for muscle strength assessments.
+ * Export service for muscle strength assessments and reflex testing.
  * Provides JSON and PDF export with nerve-grouped layout.
  */
 
 import { NERVE_GROUPS } from './nerveData.js';
 import { STRENGTH_LEVELS, getAllRatings, getRatingStats } from './ratingSystem.js';
+import { exportReflexData } from './reflexSystem.js';
+import { REFLEX_GRADES, REFLEX_DEFINITIONS, PYRAMIDAL_SIGNS } from './reflexData.js';
 
 /**
  * Export ratings as a JSON file download.
@@ -14,6 +16,7 @@ import { STRENGTH_LEVELS, getAllRatings, getRatingStats } from './ratingSystem.j
 export function exportJSON(totalMuscles, nerveMeshMap) {
   const ratings = getAllRatings();
   const stats = getRatingStats(totalMuscles);
+  const reflexData = exportReflexData();
   const timestamp = new Date().toISOString();
 
   const report = {
@@ -26,6 +29,8 @@ export function exportJSON(totalMuscles, nerveMeshMap) {
       distribution: stats.distribution,
     },
     ratings: {},
+    reflexTests: reflexData.reflexTests || {},
+    pyramidalSigns: reflexData.pyramidalSigns || {},
     attribution: {
       meshData: [
         'BodyParts3D, © The Database Center for Life Science, CC BY-SA 2.1 Japan',
@@ -237,6 +242,150 @@ export async function exportPDF(totalMuscles, ratingKeyToNerves) {
     }
   }
 
+  // ─── Reflex Tests ───
+  const reflexData = exportReflexData();
+  const reflexTests = reflexData.reflexTests || {};
+  const pyramidalSigns = reflexData.pyramidalSigns || {};
+
+  if (Object.keys(reflexTests).length > 0 || Object.keys(pyramidalSigns).length > 0) {
+    // Start new page for reflex testing
+    doc.addPage();
+    y = margin;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0);
+    doc.text('Neurological Reflex Examination', margin, y);
+    y += 10;
+
+    // ─── Reflex Tests Table ───
+    if (Object.keys(reflexTests).length > 0) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0);
+      doc.text('Deep Tendon Reflexes', margin, y);
+      y += 7;
+
+      // Table header
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(60);
+      doc.text('Reflex', margin, y);
+      doc.text('Side', margin + 50, y);
+      doc.text('Response', margin + 75, y);
+      doc.text('Spinal Level', margin + 115, y);
+      y += 1;
+      doc.setDrawColor(200);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 5;
+
+      // Table rows
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(40);
+      for (const [key, test] of Object.entries(reflexTests)) {
+        if (y > 275) {
+          doc.addPage();
+          y = margin;
+        }
+
+        const reflexDef = REFLEX_DEFINITIONS[test.reflexId];
+        const gradeInfo = REFLEX_GRADES[test.value];
+
+        if (reflexDef && gradeInfo) {
+          // Reflex name
+          doc.text(reflexDef.label, margin, y);
+
+          // Side
+          const sideText = test.side.charAt(0).toUpperCase() + test.side.slice(1);
+          doc.text(sideText, margin + 50, y);
+
+          // Response with color
+          const c = hexToRgb(gradeInfo.color);
+          doc.setFillColor(c.r, c.g, c.b);
+          doc.circle(margin + 76, y - 1, 1.5, 'F');
+          doc.text(gradeInfo.label, margin + 81, y);
+
+          // Spinal level
+          doc.setTextColor(100);
+          doc.text(reflexDef.spinalLevel, margin + 115, y);
+          doc.setTextColor(40);
+
+          y += 5;
+        }
+      }
+      y += 6;
+    }
+
+    // ─── Pyramidal Signs ───
+    if (Object.keys(pyramidalSigns).length > 0) {
+      if (y > 250) {
+        doc.addPage();
+        y = margin;
+      }
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0);
+      doc.text('Pyramidal Signs', margin, y);
+      y += 7;
+
+      // Table header
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(60);
+      doc.text('Sign', margin, y);
+      doc.text('Side', margin + 50, y);
+      doc.text('Present', margin + 75, y);
+      doc.text('Region', margin + 115, y);
+      y += 1;
+      doc.setDrawColor(200);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 5;
+
+      // Table rows
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(40);
+      for (const [key, sign] of Object.entries(pyramidalSigns)) {
+        if (y > 275) {
+          doc.addPage();
+          y = margin;
+        }
+
+        const signDef = PYRAMIDAL_SIGNS[sign.signId];
+
+        if (signDef) {
+          // Sign name
+          doc.text(signDef.label, margin, y);
+
+          // Side
+          const sideText = sign.side.charAt(0).toUpperCase() + sign.side.slice(1);
+          doc.text(sideText, margin + 50, y);
+
+          // Present/Absent with color
+          if (sign.isPresent) {
+            doc.setFillColor(239, 68, 68); // Red for present
+            doc.circle(margin + 76, y - 1, 1.5, 'F');
+            doc.setTextColor(220, 38, 38);
+            doc.text('Yes', margin + 81, y);
+          } else {
+            doc.setFillColor(156, 163, 175); // Gray for absent
+            doc.circle(margin + 76, y - 1, 1.5, 'F');
+            doc.setTextColor(100);
+            doc.text('No', margin + 81, y);
+          }
+
+          // Region
+          doc.setTextColor(100);
+          const regionText = signDef.region === 'upper_limb' ? 'Upper Limb' : 'Lower Limb';
+          doc.text(regionText, margin + 115, y);
+          doc.setTextColor(40);
+
+          y += 5;
+        }
+      }
+    }
+  }
+
   // ─── Attribution footer ───
   if (y > 260) {
     doc.addPage();
@@ -255,17 +404,40 @@ export async function exportPDF(totalMuscles, ratingKeyToNerves) {
   const pdfBlob = doc.output('blob');
   const url = URL.createObjectURL(pdfBlob);
 
-  // Open PDF in new tab
-  window.open(url, '_blank');
+  // Detect mobile
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 1024;
 
-  // Also trigger download
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
+  if (isMobile) {
+    // On mobile: open in new tab first, then trigger download after delay
+    const newTab = window.open(url, '_blank');
+
+    // If new tab opened successfully, also trigger download after a delay
+    if (newTab) {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+      }, 500);
+    } else {
+      // If popup blocked, just trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+    }
+  } else {
+    // On desktop: open in new tab AND trigger download
+    window.open(url, '_blank');
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  }
 
   // Clean up after a delay
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 function hexToRgb(hex) {

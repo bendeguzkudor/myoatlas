@@ -133,7 +133,7 @@ function transformGeometry(geometry, center, scaleFactor) {
 
 // ───────────── Main Loader ─────────────
 
-export function buildBody(onProgress, displayMode = 'full', groupHeads = true) {
+export function buildBody(onProgress, appMode = 'exploration', groupHeads = true) {
   return new Promise((resolve, reject) => {
     const loader = new GLTFLoader();
     const bodyGroup = new THREE.Group();
@@ -197,8 +197,8 @@ export function buildBody(onProgress, displayMode = 'full', groupHeads = true) {
           // Normalize mesh name for whitelist matching (underscores → spaces)
           const normalizedName = nameLower.replace(/_/g, ' ');
 
-          // Check if mesh matches whitelist (only in priority-only mode)
-          if (displayMode === 'priority-only') {
+          // Check if mesh matches whitelist (only in examination mode)
+          if (appMode === 'examination') {
             const isWhitelisted = MUSCLE_WHITELIST.some(pattern =>
               normalizedName.includes(pattern.toLowerCase())
             );

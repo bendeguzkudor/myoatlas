@@ -4,8 +4,29 @@
  */
 
 export const PRIORITY_MUSCLES = {
+  // Upper Limb - Accessory Nerve
+  'TRAPEZIUS': { nerve: 'Accessory', abbr: null, side: 'both' },
+
+  // Upper Limb - Plexus Brachialis
+  'RHOMBOIDEUS': { nerve: 'Dorsal scapular', abbr: null, side: 'both', note: 'C4, C5' },
+  'RHOMBOID MAJOR': { nerve: 'Dorsal scapular', abbr: null, side: 'both', note: 'C4, C5' },
+  'RHOMBOID MINOR': { nerve: 'Dorsal scapular', abbr: null, side: 'both', note: 'C4, C5' },
+  'SERRATUS ANTERIOR': { nerve: 'Long thoracic', abbr: null, side: 'both', note: 'C5, C6, C7' },
+  'PECTORALIS MAJOR': { nerve: 'Pectoral', abbr: null, side: 'both', note: 'Clavicular C5,C6 / Sternocostal C6,C7,C8' },
+  'SUPRASPINATUS': { nerve: 'Suprascapular', abbr: null, side: 'both', note: 'C5, C6' },
+  'INFRASPINATUS': { nerve: 'Suprascapular', abbr: null, side: 'both', note: 'C5, C6' },
+  'LATISSIMUS DORSI': { nerve: 'Thoracodorsal', abbr: null, side: 'both', note: 'C6, C7, C8' },
+  'TERES MAJOR': { nerve: 'Lower subscapular', abbr: null, side: 'both', note: 'C5, C6, C7' },
+
+  // Upper Limb - Musculocutaneous Nerve
+  'BICEPS BRACHII': { nerve: 'Musculocutaneous', abbr: null, side: 'both', note: 'C5, C6' },
+
+  // Upper Limb - Axillary Nerve
+  'DELTOIDEUS': { nerve: 'Axillary', abbr: null, side: 'both', note: 'C5, C6' },
+  'DELTOID': { nerve: 'Axillary', abbr: null, side: 'both', note: 'C5, C6' },
+
   // Upper Limb - Radial Nerve
-  'TRICEPS': { nerve: 'Radial', abbr: null, side: 'both' },
+  'TRICEPS': { nerve: 'Radial', abbr: null, side: 'both', note: 'C6, C7, C8' },
   'BRACHIORADIALIS': { nerve: 'Radial', abbr: 'BR', side: 'both' },
   'EXTENSOR CARPI RADIALIS LONGUS': { nerve: 'Radial', abbr: 'ECRL', side: 'both' },
   'SUPINATOR': { nerve: 'Radial', abbr: null, side: 'both' },
@@ -25,10 +46,14 @@ export const PRIORITY_MUSCLES = {
   'OPPONENS POLLICIS': { nerve: 'Median', abbr: null, side: 'both' },
 
   // Upper Limb - Ulnar Nerve
-  'FLEXOR CARPI ULNARIS': { nerve: 'Ulnar', abbr: 'FCU', side: 'both' },
-  'ABDUCTOR DIGITI MINIMI': { nerve: 'Ulnar', abbr: 'ADM', side: 'both' },
-  'FLEXOR DIGITI MINIMI': { nerve: 'Ulnar', abbr: 'FDM', side: 'both' },
-  'ADDUCTOR POLLICIS': { nerve: 'Ulnar', abbr: null, side: 'both' },
+  'FLEXOR CARPI ULNARIS': { nerve: 'Ulnar', abbr: 'FCU', side: 'both', note: 'C7, C8, T1' },
+  'ABDUCTOR DIGITI MINIMI': { nerve: 'Ulnar', abbr: 'ADM', side: 'both', note: 'C8, T1' },
+  'FLEXOR DIGITI MINIMI': { nerve: 'Ulnar', abbr: 'FDM', side: 'both', note: 'C8, T1' },
+  'ADDUCTOR POLLICIS': { nerve: 'Ulnar', abbr: null, side: 'both', note: 'C8, T1' },
+  'INTEROSSEUS DORSALIS': { nerve: 'Ulnar', abbr: null, side: 'both', note: 'C8, T1 - First dorsal interosseous' },
+  'DORSAL INTEROSSEOUS': { nerve: 'Ulnar', abbr: null, side: 'both', note: 'C8, T1' },
+  'INTEROSSEUS PALMARIS': { nerve: 'Ulnar', abbr: null, side: 'both', note: 'C8, T1 - Palmar interosseous II' },
+  'PALMAR INTEROSSEOUS': { nerve: 'Ulnar', abbr: null, side: 'both', note: 'C8, T1' },
 
   // Lower Limb
   'ILIOPSOAS': { nerve: 'Femoral/Spinal', abbr: null, side: 'both' },
@@ -75,30 +100,50 @@ export function isPriorityMuscle(muscleName) {
   }
 
   // Check for partial matches
+  // Shoulder & Upper Back
+  if (normalized.includes('TRAPEZIUS')) return true;
+  if (normalized.includes('RHOMBOID')) return true;
+  if (normalized.includes('SERRATUS ANTERIOR')) return true;
+  if (normalized.includes('PECTORALIS MAJOR')) return true;
+  if (normalized.includes('SUPRASPINATUS')) return true;
+  if (normalized.includes('INFRASPINATUS')) return true;
+  if (normalized.includes('LATISSIMUS DORSI')) return true;
+  if (normalized.includes('TERES MAJOR')) return true;
+  if (normalized.includes('DELTOID')) return true;
+
+  // Upper Arm
+  if (normalized.includes('BICEPS BRACHII')) return true;
   if (normalized.includes('TRICEPS BRACHII')) return true;
-  if (normalized.includes('BICEPS BRACHII') && !normalized.includes('FEMORIS')) return false; // Not priority
-  if (normalized.includes('BICEPS FEMORIS')) return true;
-  if (normalized.includes('QUADRICEPS')) return true;
-  if (normalized.includes('VASTUS')) return true;
-  if (normalized.includes('RECTUS FEMORIS')) return true;
-  if (normalized.includes('GLUTEUS')) return true;
-  if (normalized.includes('GASTROCNEMIUS')) return true;
-  if (normalized.includes('SOLEUS')) return true;
-  if (normalized.includes('TIBIALIS')) return true;
-  if (normalized.includes('PERONEUS') || normalized.includes('FIBULARIS')) return true;
+  if (normalized.includes('TRICEPS') && !normalized.includes('SURAE')) return true;
+
+  // Forearm
+  if (normalized.includes('BRACHIORADIALIS')) return true;
+  if (normalized.includes('PRONATOR TERES')) return true;
+  if (normalized.includes('SUPINATOR')) return true;
   if (normalized.includes('EXTENSOR CARPI')) return true;
   if (normalized.includes('FLEXOR CARPI')) return true;
   if (normalized.includes('EXTENSOR DIGITORUM') && !normalized.includes('SUPERFICIAL')) return true;
   if (normalized.includes('FLEXOR DIGITORUM')) return true;
-  if (normalized.includes('BRACHIORADIALIS')) return true;
-  if (normalized.includes('PRONATOR TERES')) return true;
-  if (normalized.includes('SUPINATOR')) return true;
   if (normalized.includes('POLLICIS')) return true;
+
+  // Hand
+  if (normalized.includes('INTEROSSEOUS') || normalized.includes('INTEROSSEUS')) return true;
+
+  // Lower Limb
   if (normalized.includes('ILIOPSOAS')) return true;
+  if (normalized.includes('QUADRICEPS')) return true;
+  if (normalized.includes('VASTUS')) return true;
+  if (normalized.includes('RECTUS FEMORIS')) return true;
+  if (normalized.includes('BICEPS FEMORIS')) return true;
   if (normalized.includes('ADDUCTOR') && !normalized.includes('POLLICIS')) return true;
+  if (normalized.includes('GLUTEUS')) return true;
   if (normalized.includes('TENSOR FASCIAE')) return true;
   if (normalized.includes('SEMITENDINOSUS')) return true;
   if (normalized.includes('SEMIMEMBRANOSUS')) return true;
+  if (normalized.includes('GASTROCNEMIUS')) return true;
+  if (normalized.includes('SOLEUS')) return true;
+  if (normalized.includes('TIBIALIS')) return true;
+  if (normalized.includes('PERONEUS') || normalized.includes('FIBULARIS')) return true;
 
   return false;
 }

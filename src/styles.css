@@ -127,6 +127,109 @@ body {
   pointer-events: auto;
 }
 
+/* ───────────── Mode Selection Modal ───────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-card {
+  background: var(--bg-panel-solid);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px;
+  max-width: 720px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-title {
+  font-size: 36px;
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.modal-subtitle {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin-bottom: 40px;
+  font-weight: var(--font-medium);
+}
+
+.mode-options {
+  display: flex;
+  gap: 24px;
+}
+
+.mode-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: inherit;
+  font-family: inherit;
+}
+
+.mode-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--accent-light);
+  transform: translateY(-4px);
+  box-shadow: var(--accent-glow);
+}
+
+.mode-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+
+.mode-btn h3 {
+  font-size: 20px;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.mode-btn p {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+@media (max-width: 768px) {
+  .modal-card {
+    padding: 32px 24px;
+    max-width: calc(100% - 48px);
+  }
+
+  .mode-options {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .modal-title {
+    font-size: 28px;
+  }
+}
+
 /* ───────────── Top Bar ───────────── */
 
 #top-bar {
@@ -482,6 +585,12 @@ body {
   color: white;
 }
 
+/* ───────────── Utility Classes ───────────── */
+
+.hidden {
+  display: none !important;
+}
+
 /* ───────────── Settings (collapsible) ───────────── */
 
 #settings-section {
@@ -549,6 +658,93 @@ body {
 
 .toggle input[type="checkbox"]:checked + span {
   color: var(--text);
+}
+
+/* ───────────── Modern Toggle Switch (Reflex Mode) ───────────── */
+
+#reflex-mode-toggle-container {
+  margin-top: var(--spacing-3);
+  padding: var(--spacing-3);
+  background: var(--bg-panel-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+#reflex-mode-toggle-container:hover {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+#reflex-mode-toggle-container input[type="checkbox"] {
+  /* Hide default checkbox */
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+#reflex-mode-toggle-container span {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  padding-left: 60px; /* Make room for the toggle switch */
+  position: relative;
+}
+
+/* Toggle switch track */
+#reflex-mode-toggle-container span::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  border: 1px solid var(--border);
+}
+
+/* Toggle switch knob */
+#reflex-mode-toggle-container span::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Checked state - track */
+#reflex-mode-toggle-container input[type="checkbox"]:checked + span::before {
+  background: linear-gradient(135deg, #3B82F6, #60A5FA);
+  border-color: #3B82F6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+}
+
+/* Checked state - knob */
+#reflex-mode-toggle-container input[type="checkbox"]:checked + span::after {
+  left: 27px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Checked state - text */
+#reflex-mode-toggle-container input[type="checkbox"]:checked + span {
+  color: var(--text-primary);
+  font-weight: var(--font-semibold);
 }
 
 /* Range slider */
@@ -2167,5 +2363,360 @@ a:focus-visible {
 
   .panel-toggles {
     display: none;
+  }
+}
+
+/* ───────────── Reflex Testing Panel (Desktop) ───────────── */
+
+#reflex-panel {
+  position: absolute;
+  top: 80px;
+  right: 12px;
+  width: 360px;
+  max-height: calc(100vh - 96px);
+  background: var(--bg-panel);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: var(--spacing-4);
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  z-index: 20;
+}
+
+#reflex-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-4);
+  padding-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--border);
+}
+
+#reflex-panel .panel-header h2 {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+#reflex-panel .close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+#reflex-panel .close-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.reflex-metadata {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+  padding-bottom: var(--spacing-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.metadata-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+.metadata-row .label {
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+
+.reflex-testing-section {
+  margin-bottom: var(--spacing-4);
+}
+
+.testing-notes {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+  font-style: italic;
+  padding: var(--spacing-3);
+  background: var(--bg-panel-secondary);
+  border-radius: 8px;
+  margin-top: var(--spacing-2);
+}
+
+.reflex-grading-section {
+  margin-bottom: var(--spacing-4);
+}
+
+.section-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-2);
+}
+
+.reflex-grade-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-2);
+}
+
+.reflex-grade-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+  background: var(--bg-panel-secondary);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  color: var(--text-primary);
+}
+
+.reflex-grade-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.reflex-grade-btn.active {
+  border-color: currentColor;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.reflex-grade-btn[data-grade="areflexia"] {
+  color: #7F1D1D;
+}
+.reflex-grade-btn[data-grade="areflexia"].active {
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.reflex-grade-btn[data-grade="hyporeflexia"] {
+  color: #F97316;
+}
+.reflex-grade-btn[data-grade="hyporeflexia"].active {
+  background: rgba(249, 115, 22, 0.2);
+}
+
+.reflex-grade-btn[data-grade="normal"] {
+  color: #10B981;
+}
+.reflex-grade-btn[data-grade="normal"].active {
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.reflex-grade-btn[data-grade="hyperreflexia"] {
+  color: #EF4444;
+}
+.reflex-grade-btn[data-grade="hyperreflexia"].active {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.grade-symbol {
+  font-size: 20px;
+  font-weight: var(--font-bold);
+  line-height: 1;
+}
+
+.grade-label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* Pyramidal Signs Section */
+
+.pyramidal-signs-section {
+  margin-top: var(--spacing-4);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--border);
+}
+
+.pyramidal-signs-section summary {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: var(--spacing-2);
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.pyramidal-signs-section summary:hover {
+  background: var(--bg-hover);
+}
+
+.sign-checklist {
+  margin-top: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.sign-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2);
+  background: var(--bg-panel-secondary);
+  border-radius: 6px;
+}
+
+.sign-name {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* ───────────── Mobile Reflex Sheet ───────────── */
+
+#mobile-reflex-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 85vh;
+  background: var(--bg-panel-solid);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+  z-index: 250;
+  padding: var(--spacing-4);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+}
+
+#mobile-reflex-sheet:not(.hidden) {
+  transform: translateY(0);
+}
+
+#mobile-reflex-sheet .sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-4);
+}
+
+#mobile-reflex-sheet .sheet-header h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.mobile-reflex-grade-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-2);
+  margin: var(--spacing-4) 0;
+}
+
+.mobile-grade-btn {
+  min-height: 64px;
+  padding: var(--spacing-2);
+  background: var(--bg-panel-secondary);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: var(--font-bold);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.mobile-grade-btn:active {
+  transform: scale(0.95);
+}
+
+.mobile-grade-btn.active {
+  border-width: 3px;
+  box-shadow: 0 0 16px currentColor;
+}
+
+/* Mobile grade button colors */
+.mobile-grade-btn[data-grade="areflexia"] { color: #7F1D1D; }
+.mobile-grade-btn[data-grade="areflexia"].active { background: rgba(127, 29, 29, 0.2); }
+
+.mobile-grade-btn[data-grade="hyporeflexia"] { color: #F97316; }
+.mobile-grade-btn[data-grade="hyporeflexia"].active { background: rgba(249, 115, 22, 0.2); }
+
+.mobile-grade-btn[data-grade="normal"] { color: #10B981; }
+.mobile-grade-btn[data-grade="normal"].active { background: rgba(16, 185, 129, 0.2); }
+
+.mobile-grade-btn[data-grade="hyperreflexia"] { color: #EF4444; }
+.mobile-grade-btn[data-grade="hyperreflexia"].active { background: rgba(239, 68, 68, 0.2); }
+
+.mobile-reflex-more,
+.mobile-pyramidal-signs {
+  margin-top: var(--spacing-3);
+  padding: var(--spacing-3);
+  background: var(--bg-panel-secondary);
+  border-radius: 8px;
+}
+
+.mobile-reflex-more summary,
+.mobile-pyramidal-signs summary {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: var(--spacing-2);
+}
+
+.mobile-reflex-details {
+  margin-top: var(--spacing-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.mobile-reflex-details p {
+  margin-bottom: var(--spacing-2);
+}
+
+/* Hide reflex panel on mobile (use sheet instead) */
+@media (max-width: 1024px) {
+  #reflex-panel {
+    display: none;
+  }
+}
+
+/* Landscape mobile adjustments */
+@media (max-width: 1024px) and (orientation: landscape) {
+  #mobile-reflex-sheet {
+    max-height: 70vh;
   }
 }
