@@ -54,17 +54,13 @@ export function exportJSON(totalMuscles, nerveMeshMap) {
   const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
 
-  // Open JSON in new tab
-  const newWindow = window.open(url, '_blank');
-  if (newWindow) {
-    newWindow.document.title = `Muscle Assessment - ${new Date().toISOString().slice(0, 10)}`;
-  }
-
-  // Also trigger download
   const a = document.createElement('a');
   a.href = url;
   a.download = `muscle-assessment-${new Date().toISOString().slice(0, 10)}.json`;
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
+  a.remove();
 
   // Clean up after a delay to ensure both operations complete
   setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -407,34 +403,13 @@ export async function exportPDF(totalMuscles, ratingKeyToNerves) {
   // Detect mobile
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth <= 1024;
 
-  if (isMobile) {
-    // On mobile: open in new tab first, then trigger download after delay
-    const newTab = window.open(url, '_blank');
-
-    // If new tab opened successfully, also trigger download after a delay
-    if (newTab) {
-      setTimeout(() => {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-      }, 500);
-    } else {
-      // If popup blocked, just trigger download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-    }
-  } else {
-    // On desktop: open in new tab AND trigger download
-    window.open(url, '_blank');
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 
   // Clean up after a delay
   setTimeout(() => URL.revokeObjectURL(url), 2000);

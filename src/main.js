@@ -313,6 +313,7 @@ let reflexHotspots = []; // Array for raycasting
 let pyramidalHotspotsGroup = null;
 let pyramidalHotspots = [];
 let selectedReflexHotspot = null;
+const mobileSelectionChip = document.getElementById('mobile-selection-chip');
 
 // ───────────── Raycasting & Interaction ─────────────
 
@@ -518,7 +519,7 @@ function rateMuscle(mesh, strength) {
   scrollSelectedExamEntryIntoView();
   applyExamSelectionFocus();
 
-  if (autoProceed && APP_MODE === 'examination') {
+  if ((autoProceed || isMobile()) && APP_MODE === 'examination') {
     setTimeout(() => selectNextExamEntry(), 150);
   } else if (selectedMesh) {
     selectedMesh = null;
@@ -536,6 +537,7 @@ function clearCurrentSelection() {
   }
   selectedExamEntryIndex = -1;
   hideInfoPanel();
+  hideMobileSelectionChip();
   updateMuscleListSelection();
   updateWorkflowButtons();
   applyExamSelectionFocus();
@@ -565,6 +567,9 @@ infoClose.addEventListener('click', () => {
 });
 
 function showInfoPanel(userData) {
+  if (isMobile()) {
+    closeSidebars();
+  }
   if (isMobile()) {
     showMobileSheet(userData);
   } else {
@@ -739,6 +744,8 @@ function showMobileSheet(userData) {
   mobileBackdrop.setAttribute('aria-hidden', 'false');
   mobileSheet.classList.add('active');
   mobileSheet.setAttribute('aria-hidden', 'false');
+
+  updateMobileSelectionChip(userData.displayName);
 
   // Highlight in muscle list
   updateMuscleListSelection();
@@ -920,6 +927,7 @@ function hideMobileSheet() {
   mobileSheet.setAttribute('aria-hidden', 'true');
   mobileBackdrop.classList.remove('active');
   mobileBackdrop.setAttribute('aria-hidden', 'true');
+  hideMobileSelectionChip();
 
   if (selectedMesh) {
     resetMeshAppearance(selectedMesh);
@@ -1063,6 +1071,24 @@ function hideInfoPanel() {
     updateMuscleListSelection();
   }
   applyExamSelectionFocus();
+}
+
+function updateMobileSelectionChip(label) {
+  if (!mobileSelectionChip) return;
+  if (!label) {
+    hideMobileSelectionChip();
+    return;
+  }
+  mobileSelectionChip.textContent = label;
+  mobileSelectionChip.classList.add('visible');
+  mobileSelectionChip.classList.remove('hidden');
+}
+
+function hideMobileSelectionChip() {
+  if (!mobileSelectionChip) return;
+  mobileSelectionChip.textContent = '';
+  mobileSelectionChip.classList.remove('visible');
+  mobileSelectionChip.classList.add('hidden');
 }
 
 function updateRatingButtons(activeStrength) {
@@ -1780,6 +1806,9 @@ function selectExamEntry(index) {
   selectedExamEntryIndex = index;
   mesh.material = selectedMaterial;
   showInfoPanel(mesh.userData);
+  if (isMobile()) {
+    closeSidebars();
+  }
   updateMuscleListSelection();
   updateWorkflowButtons();
   applyExamSelectionFocus();
@@ -1889,6 +1918,9 @@ function updateMuscleListSelection() {
   });
 
   scrollSelectedExamEntryIntoView();
+  if (!selectedMesh) {
+    hideMobileSelectionChip();
+  }
 }
 
 function updateMuscleListRatings() {

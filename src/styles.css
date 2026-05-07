@@ -278,6 +278,10 @@ body {
   gap: var(--spacing-3);
 }
 
+.mobile-selection-chip {
+  display: none;
+}
+
 #progress-text {
   font-size: var(--text-xs);
   color: var(--text-secondary);
@@ -1601,6 +1605,30 @@ kbd {
   #progress-bar-track {
     width: 80px;
   }
+
+  .mobile-selection-chip {
+    position: absolute;
+    left: 12px;
+    top: 10px;
+    display: none;
+    max-width: 44vw;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(15, 17, 21, 0.78);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 11;
+  }
+
+  .mobile-selection-chip.visible {
+    display: block;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1616,11 +1644,28 @@ kbd {
     padding: 0 12px;
   }
 
+  .mobile-selection-chip {
+    top: 8px;
+    max-width: 48vw;
+  }
+
   #left-sidebar,
   #sidebar {
     top: 56px;
     height: calc(100vh - 56px);
     width: 90%;
+  }
+
+  .sidebar-backdrop {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+
+  .mobile-rating-backdrop {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
   }
 
   /* Hide keyboard shortcuts on mobile */
@@ -1792,8 +1837,8 @@ kbd {
   bottom: 0;
   left: 0;
   right: 0;
-  /* Hugs content by default (rating only ≈ 20vh); grows when More info expands */
-  max-height: 85vh;
+  /* Compact by default so the model remains visible; grows only when More info expands */
+  max-height: 34vh;
   background: var(--bg-panel);
   backdrop-filter: blur(24px) saturate(140%);
   -webkit-backdrop-filter: blur(24px) saturate(140%);
@@ -1816,25 +1861,25 @@ kbd {
   height: 4px;
   background: rgba(148, 163, 184, 0.3);
   border-radius: 2px;
-  margin: 12px auto 8px;
+  margin: 8px auto 6px;
   cursor: grab;
 }
 
 .sheet-content {
-  padding: 0 20px 20px;
+  padding: 0 16px 14px;
   overflow-y: auto;
-  max-height: calc(85vh - 32px);
+  max-height: calc(34vh - 22px);
 }
 
 .sheet-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .sheet-header h2 {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -1877,7 +1922,7 @@ kbd {
 }
 
 .mobile-rating-section {
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .mobile-rating-section > label {
@@ -1916,13 +1961,13 @@ kbd {
   background: var(--bg-panel-secondary);
   border: 1px solid var(--border);
   border-radius: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .mobile-rating-btn {
   flex: 1;
-  min-height: 56px;
-  font-size: 18px;
+  min-height: 38px;
+  font-size: 15px;
   font-weight: 700;
   font-family: inherit;
   background: transparent;
@@ -1966,6 +2011,12 @@ kbd {
   font-size: 11px;
   color: var(--text-muted);
   display: block;
+}
+
+@media (max-width: 768px) {
+  .current-rating-label {
+    display: none;
+  }
 }
 
 .sheet-details {
@@ -2217,7 +2268,7 @@ kbd {
 
   .rating-btn,
   .mobile-rating-btn {
-    min-height: 56px;
+    min-height: 38px;
   }
 
   /* Add will-change for performance */
@@ -2230,11 +2281,11 @@ kbd {
   /* Landscape adjustments */
   @media (orientation: landscape) {
     .mobile-rating-sheet {
-      max-height: 70vh;
+      max-height: 30vh;
     }
 
     .sheet-content {
-      max-height: calc(70vh - 32px);
+      max-height: calc(30vh - 22px);
     }
   }
 }
