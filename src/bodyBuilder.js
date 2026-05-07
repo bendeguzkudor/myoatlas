@@ -165,6 +165,27 @@ export function buildBody(onProgress, appMode = 'exploration', groupHeads = true
 
     Promise.all([anatomyPromise, skeletonPromise, mappingPromise])
       .then(([anatomyGLTF, skeletonGLTF, meshMapping]) => {
+        // Build lookup tables for mesh metadata. We keep the exact mesh name
+        // from mesh_mapping.json plus stable ids so downstream code can match
+        // by name or by identifier.
+        const meshMappingByName = new Map();
+        for (const [index, entry] of meshMapping.entries()) {
+          const meshId = `mesh:${index}`;
+          const normalizedName = normalizeMeshKey(entry.name);
+          const normalizedOriginalName = normalizeMeshKey(entry.originalName);
+          const meta = { ...entry, meshId, meshIndex: index };
+
+          if (normalizedName) {
+            if (!meshMappingByName.has(normalizedName)) meshMappingByName.set(normalizedName, []);
+            meshMappingByName.get(normalizedName).push(meta);
+          }
+
+          if (normalizedOriginalName && normalizedOriginalName !== normalizedName) {
+            if (!meshMappingByName.has(normalizedOriginalName)) meshMappingByName.set(normalizedOriginalName, []);
+            meshMappingByName.get(normalizedOriginalName).push(meta);
+          }
+        }
+
         // Build a set of Z-Anatomy mesh names for tagging
         // GLTFLoader replaces spaces with underscores in node names,
         // so normalize mapping names the same way for lookup.
@@ -217,6 +238,7 @@ export function buildBody(onProgress, appMode = 'exploration', groupHeads = true
 
           const group = classifyMuscleGroup(name);
           const info = getMuscleInfo(name);
+          const meshMappingEntry = resolveMeshMappingEntry(meshMappingByName, name);
 
           // Clone + transform geometry
           const geometry = child.geometry.clone();
@@ -240,9 +262,17 @@ export function buildBody(onProgress, appMode = 'exploration', groupHeads = true
           // Store metadata for raycasting/info panel
           mesh.userData.displayName = formatMuscleName(name);
           mesh.userData.originalMaterial = material; // for highlight restore
+          mesh.userData.meshId = meshMappingEntry?.meshId || `mesh:${muscleCount}`;
+          mesh.userData.fmaId = meshMappingEntry?.fmaId || '';
+          mesh.userData.bpId = meshMappingEntry?.bpId || '';
+          mesh.userData.meshMapping = meshMappingEntry || null;
           mesh.userData.muscleData = {
             name: formatMuscleName(name),
             rawName: name,
+            meshName: meshMappingEntry?.name || name,
+            meshId: meshMappingEntry?.meshId || `mesh:${muscleCount}`,
+            fmaId: meshMappingEntry?.fmaId || '',
+            bpId: meshMappingEntry?.bpId || '',
             group: group || 'OTHER',
             type: isTendon ? 'tendon' : 'muscle',
             info: info,
@@ -356,6 +386,23 @@ function formatMuscleName(name) {
 function titleWord(w) {
   if (!w) return w;
   return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+}
+
+function normalizeMeshKey(value) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/\s*\(\d+\)\s*$/g, '')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function resolveMeshMappingEntry(meshMappingByName, rawName) {
+  const key = normalizeMeshKey(rawName);
+  if (!key) return null;
+
+  const entries = meshMappingByName.get(key);
+  return entries && entries.length > 0 ? entries[0] : null;
 }
 
 /**

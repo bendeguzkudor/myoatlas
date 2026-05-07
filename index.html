@@ -96,29 +96,22 @@
             <div id="search-results"></div>
           </div>
 
-          <!-- Priority Filter (only in full mode) -->
-          <div class="sidebar-section" id="priority-filter-section">
-            <label>Filter List</label>
-            <div class="button-row" style="margin-bottom: 10px">
-              <button
-                id="btn-all-muscles"
-                class="active"
-                title="Show all muscles in list"
-              >
-                All
+          <!-- Exam workflow -->
+          <div class="sidebar-section" id="exam-workflow-section">
+            <label>Workflow</label>
+            <div class="button-row">
+              <button id="btn-next-muscle" title="Select the next muscle in the exam list">
+                Next
               </button>
-              <button
-                id="btn-priority-only"
-                title="Show priority muscles only in list"
-              >
-                Priority
+              <button id="btn-auto-proceed" title="Automatically select the next muscle after rating">
+                Auto Proceed
               </button>
             </div>
           </div>
 
           <!-- Muscle List -->
           <div id="muscle-list-section">
-            <label>Muscles <span id="muscle-list-count"></span></label>
+            <label>Exam Muscles <span id="muscle-list-count"></span></label>
             <div id="muscle-list"></div>
           </div>
 
@@ -158,7 +151,7 @@
             <div id="muscle-group-filters"></div>
           </div>
 
-          <!-- Settings (collapsible, open by default) -->
+          <!-- Settings (collapsible) -->
           <details id="settings-section" open>
             <summary>Settings</summary>
             <div class="settings-content">
@@ -169,40 +162,31 @@
                 <button id="btn-reset" title="Reset view">Reset</button>
               </div>
               <div class="toggle-row">
-                <label class="toggle">
-                  <input type="checkbox" id="toggle-skeleton" checked />
-                  <span>Show Skeleton</span>
-                </label>
-                <label class="toggle">
-                  <input type="checkbox" id="toggle-tendons" checked />
-                  <span>Show Tendons</span>
-                </label>
-                <label class="toggle">
-                  <input type="checkbox" id="toggle-group-heads" checked />
-                  <span>Group Muscle Heads</span>
-                </label>
-                <label class="toggle" id="reflex-mode-toggle-container">
-                  <input type="checkbox" id="reflex-mode-toggle" />
-                  <span>🩺 Reflex Testing Mode</span>
-                </label>
-                <label class="toggle" id="hide-muscles-toggle-container" style="display: none;">
-                  <input type="checkbox" id="hide-muscles-toggle" />
-                  <span>Hide Muscles (Skeleton Only)</span>
-                </label>
+                <div id="exam-view-selector" class="exam-view-selector">
+                  <label>Diagnosis Layer</label>
+                  <div class="exam-view-buttons">
+                    <button class="exam-view-btn active" data-exam-view="muscle" title="Rate muscle strength">
+                      Muscle
+                    </button>
+                    <button class="exam-view-btn" data-exam-view="reflex" title="Grade reflex responses">
+                      Reflex
+                    </button>
+                    <button class="exam-view-btn" data-exam-view="pyramidal" title="Assess pyramidal signs">
+                      Pyramidal
+                    </button>
+                  </div>
+                </div>
+                <div id="exam-muscle-visibility-container" class="exam-view-selector" style="display: none;">
+                  <label>Exam Display</label>
+                  <div class="exam-visibility-buttons">
+                    <button id="toggle-exam-muscles" class="exam-view-btn" type="button" aria-pressed="false">
+                      Show Muscles
+                    </button>
+                  </div>
+                </div>
               </div>
               <div
-                style="
-                  font-size: 10px;
-                  color: var(--text-muted);
-                  margin-top: 8px;
-                  line-height: 1.4;
-                "
-              >
-                Group Muscle Heads: Rate triceps heads together vs separately
-                (updates instantly).
-              </div>
-              <div
-                id="reflex-mode-helper"
+                id="exam-view-helper"
                 style="
                   font-size: 11px;
                   color: var(--text-muted);
@@ -213,33 +197,34 @@
                   line-height: 1.5;
                   display: none;
                 "
-              >
-                💡 Blue pulsing markers appear at reflex test sites. Click them to grade reflexes (0/+/++/+++).
-              </div>
-              <div>
-                <div class="slider-label">Muscle Transparency</div>
-                <input
-                  type="range"
-                  id="muscle-opacity-slider"
-                  min="0.1"
-                  max="1"
-                  step="0.05"
-                  value="1"
-                />
-              </div>
-              <div>
-                <div class="slider-label">Skeleton Transparency</div>
-                <input
-                  type="range"
-                  id="skeleton-opacity-slider"
-                  min="0.1"
-                  max="1"
-                  step="0.05"
-                  value="0.6"
-                />
+                >
+                Select muscles on the model to rate strength from 1 to 5.
               </div>
             </div>
           </details>
+
+          <!-- Reflex / Pyramidal Grading Panel (Desktop) -->
+          <div id="reflex-panel" class="hidden">
+            <div class="panel-header">
+              <h2 id="reflex-name">Patellar Reflex</h2>
+              <button id="close-reflex-panel" class="close-btn">✕</button>
+            </div>
+
+            <div class="panel-content">
+              <div class="reflex-metadata">
+                <div class="metadata-row">
+                  <span class="label">Exam:</span>
+                  <span id="exam-panel-mode" class="badge">Reflex exam</span>
+                </div>
+                <div class="metadata-row">
+                  <span class="label">Side:</span>
+                  <span id="reflex-side" class="badge">Left</span>
+                </div>
+              </div>
+
+              <div id="exam-panel-body" class="exam-panel-body"></div>
+            </div>
+          </div>
 
           <!-- Selection Card + Rating (hidden by default) -->
           <div id="selection-card" class="hidden">
@@ -285,149 +270,6 @@
               <button id="btn-hide-part" title="Hide this part from the model">
                 Hide This Part
               </button>
-            </div>
-          </div>
-
-          <!-- Reflex Testing Panel (Desktop) -->
-          <div id="reflex-panel" class="hidden">
-            <div class="panel-header">
-              <h2 id="reflex-name">Patellar Reflex</h2>
-              <button id="close-reflex-panel" class="close-btn">✕</button>
-            </div>
-
-            <div class="panel-content">
-              <div class="reflex-metadata">
-                <div class="metadata-row">
-                  <span class="label">Side:</span>
-                  <span id="reflex-side" class="badge">Left</span>
-                </div>
-                <div class="metadata-row">
-                  <span class="label">Nerve:</span>
-                  <span id="reflex-nerve">Femoral nerve</span>
-                </div>
-                <div class="metadata-row">
-                  <span class="label">Spinal Level:</span>
-                  <span id="reflex-spinal-level">L2-L4</span>
-                </div>
-              </div>
-
-              <div class="reflex-testing-section">
-                <label class="section-label">Testing Procedure</label>
-                <p id="reflex-testing-notes" class="testing-notes">
-                  Patient seated, legs dangling. Strike patellar tendon below patella.
-                </p>
-              </div>
-
-              <div class="reflex-grading-section">
-                <label class="section-label">Grade Response</label>
-                <div class="reflex-grade-buttons">
-                  <button class="reflex-grade-btn" data-grade="areflexia">
-                    <span class="grade-symbol">0</span>
-                    <span class="grade-label">Areflexia</span>
-                  </button>
-                  <button class="reflex-grade-btn" data-grade="hyporeflexia">
-                    <span class="grade-symbol">+</span>
-                    <span class="grade-label">Hyporeflexia</span>
-                  </button>
-                  <button class="reflex-grade-btn" data-grade="normal">
-                    <span class="grade-symbol">++</span>
-                    <span class="grade-label">Normal</span>
-                  </button>
-                  <button class="reflex-grade-btn" data-grade="hyperreflexia">
-                    <span class="grade-symbol">+++</span>
-                    <span class="grade-label">Hyperreflexia</span>
-                  </button>
-                </div>
-              </div>
-
-              <details class="pyramidal-signs-section" id="pyramidal-signs-lower">
-                <summary>Pyramidal Signs (Lower Limb)</summary>
-                <div class="sign-checklist">
-                  <div class="sign-row">
-                    <span class="sign-name">Babinski</span>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="babinski" data-side="left">
-                      <span>Left</span>
-                    </label>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="babinski" data-side="right">
-                      <span>Right</span>
-                    </label>
-                  </div>
-                  <div class="sign-row">
-                    <span class="sign-name">Chaddock</span>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="chaddock" data-side="left">
-                      <span>Left</span>
-                    </label>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="chaddock" data-side="right">
-                      <span>Right</span>
-                    </label>
-                  </div>
-                  <div class="sign-row">
-                    <span class="sign-name">Gordon</span>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="gordon" data-side="left">
-                      <span>Left</span>
-                    </label>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="gordon" data-side="right">
-                      <span>Right</span>
-                    </label>
-                  </div>
-                  <div class="sign-row">
-                    <span class="sign-name">Oppenheim</span>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="oppenheim" data-side="left">
-                      <span>Left</span>
-                    </label>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="oppenheim" data-side="right">
-                      <span>Right</span>
-                    </label>
-                  </div>
-                  <div class="sign-row">
-                    <span class="sign-name">Schaefer</span>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="schaefer" data-side="left">
-                      <span>Left</span>
-                    </label>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="schaefer" data-side="right">
-                      <span>Right</span>
-                    </label>
-                  </div>
-                </div>
-              </details>
-
-              <details class="pyramidal-signs-section" id="pyramidal-signs-upper">
-                <summary>Pyramidal Signs (Upper Limb)</summary>
-                <div class="sign-checklist">
-                  <div class="sign-row">
-                    <span class="sign-name">Hoffman</span>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="hoffman" data-side="left">
-                      <span>Left</span>
-                    </label>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="hoffman" data-side="right">
-                      <span>Right</span>
-                    </label>
-                  </div>
-                  <div class="sign-row">
-                    <span class="sign-name">Trömner</span>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="tromner" data-side="left">
-                      <span>Left</span>
-                    </label>
-                    <label class="checkbox-label">
-                      <input type="checkbox" data-sign="tromner" data-side="right">
-                      <span>Right</span>
-                    </label>
-                  </div>
-                </div>
-              </details>
             </div>
           </div>
 
@@ -556,111 +398,8 @@
           </div>
 
           <div class="sheet-content">
-            <!-- Mobile Reflex Grade Buttons -->
-            <div class="mobile-reflex-grade-buttons">
-              <button class="mobile-grade-btn" data-grade="areflexia" title="No response">0</button>
-              <button class="mobile-grade-btn" data-grade="hyporeflexia" title="Diminished">+</button>
-              <button class="mobile-grade-btn" data-grade="normal" title="Normal">++</button>
-              <button class="mobile-grade-btn" data-grade="hyperreflexia" title="Exaggerated">+++</button>
-            </div>
-
-            <details class="mobile-reflex-more">
-              <summary>More Info</summary>
-              <div class="mobile-reflex-details">
-                <p><strong>Nerve:</strong> <span id="mobile-reflex-nerve">Femoral nerve</span></p>
-                <p><strong>Spinal Level:</strong> <span id="mobile-reflex-spinal-level">L2-L4</span></p>
-                <p><strong>Testing:</strong> <span id="mobile-reflex-testing-notes">Patient seated, legs dangling.</span></p>
-              </div>
-            </details>
-
-            <details class="mobile-pyramidal-signs" id="mobile-pyramidal-signs-lower">
-              <summary>Pyramidal Signs (Lower Limb)</summary>
-              <div class="sign-checklist">
-                <div class="sign-row">
-                  <span class="sign-name">Babinski</span>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="babinski" data-side="left">
-                    <span>Left</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="babinski" data-side="right">
-                    <span>Right</span>
-                  </label>
-                </div>
-                <div class="sign-row">
-                  <span class="sign-name">Chaddock</span>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="chaddock" data-side="left">
-                    <span>Left</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="chaddock" data-side="right">
-                    <span>Right</span>
-                  </label>
-                </div>
-                <div class="sign-row">
-                  <span class="sign-name">Gordon</span>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="gordon" data-side="left">
-                    <span>Left</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="gordon" data-side="right">
-                    <span>Right</span>
-                  </label>
-                </div>
-                <div class="sign-row">
-                  <span class="sign-name">Oppenheim</span>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="oppenheim" data-side="left">
-                    <span>Left</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="oppenheim" data-side="right">
-                    <span>Right</span>
-                  </label>
-                </div>
-                <div class="sign-row">
-                  <span class="sign-name">Schaefer</span>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="schaefer" data-side="left">
-                    <span>Left</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="schaefer" data-side="right">
-                    <span>Right</span>
-                  </label>
-                </div>
-              </div>
-            </details>
-
-            <details class="mobile-pyramidal-signs" id="mobile-pyramidal-signs-upper">
-              <summary>Pyramidal Signs (Upper Limb)</summary>
-              <div class="sign-checklist">
-                <div class="sign-row">
-                  <span class="sign-name">Hoffman</span>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="hoffman" data-side="left">
-                    <span>Left</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="hoffman" data-side="right">
-                    <span>Right</span>
-                  </label>
-                </div>
-                <div class="sign-row">
-                  <span class="sign-name">Trömner</span>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="tromner" data-side="left">
-                    <span>Left</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-sign="tromner" data-side="right">
-                    <span>Right</span>
-                  </label>
-                </div>
-              </div>
-            </details>
+            <div id="mobile-exam-mode" class="mobile-exam-mode">Reflex exam</div>
+            <div id="mobile-exam-body" class="exam-panel-body"></div>
           </div>
         </div>
       </div>

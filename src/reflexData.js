@@ -151,6 +151,39 @@ export const REFLEX_DEFINITIONS = {
   }
 };
 
+export const REFLEX_HOTSPOT_GROUPS = {
+  forearm: {
+    id: 'forearm',
+    label: 'Forearm Reflexes',
+    reflexIds: ['biceps', 'triceps', 'brachioradialis', 'radius'],
+    color: '#3B82F6',
+    positions: {
+      left: { x: -6.0, y: 4.2, z: 0.4 },
+      right: { x: 6.0, y: 4.2, z: 0.4 }
+    }
+  },
+  knee: {
+    id: 'knee',
+    label: 'Knee Reflex',
+    reflexIds: ['patellar'],
+    color: '#10B981',
+    positions: {
+      left: { x: -4.0, y: -8.5, z: 0.5 },
+      right: { x: 4.0, y: -8.5, z: 0.5 }
+    }
+  },
+  achilles: {
+    id: 'achilles',
+    label: 'Achilles Reflex',
+    reflexIds: ['achilles'],
+    color: '#F59E0B',
+    positions: {
+      left: { x: -3.5, y: -12.5, z: 0.0 },
+      right: { x: 3.5, y: -12.5, z: 0.0 }
+    }
+  }
+};
+
 export const PYRAMIDAL_SIGNS = {
   // ─── Lower Limb Signs ───
   babinski: {
@@ -229,5 +262,38 @@ export const PYRAMIDAL_SIGNS = {
     significance: 'Indicates upper motor neuron lesion or cervical myelopathy when present',
     normalResponse: 'No flexion of thumb or fingers',
     pathologicalResponse: 'Flexion of thumb and fingers'
+  }
+};
+
+export const PYRAMIDAL_HOTSPOT_GROUPS = {
+  palm: {
+    id: 'palm',
+    label: 'Palm Signs',
+    signIds: ['hoffman', 'tromner'],
+    color: '#F97316',
+    positions: {
+      left: { x: -6.1, y: 1.7, z: 0.7 },
+      right: { x: 6.1, y: 1.7, z: 0.7 }
+    }
+  },
+  shin: {
+    id: 'shin',
+    label: 'Lower Leg Signs',
+    signIds: ['chaddock', 'gordon', 'oppenheim', 'schaefer'],
+    color: '#EF4444',
+    positions: {
+      left: { x: -3.6, y: -10.0, z: 0.6 },
+      right: { x: 3.6, y: -10.0, z: 0.6 }
+    }
+  },
+  sole: {
+    id: 'sole',
+    label: 'Sole Sign',
+    signIds: ['babinski'],
+    color: '#8B5CF6',
+    positions: {
+      left: { x: -2.5, y: -14.4, z: 1.1 },
+      right: { x: 2.5, y: -14.4, z: 1.1 }
+    }
   }
 };

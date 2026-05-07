@@ -44,6 +44,7 @@ export const PRIORITY_MUSCLES = {
   'FLEXOR POLLICIS LONGUS': { nerve: 'Anterior interosseous', abbr: 'FPL', side: 'both' },
   'ABDUCTOR POLLICIS BREVIS': { nerve: 'Median', abbr: 'APB', side: 'both' },
   'OPPONENS POLLICIS': { nerve: 'Median', abbr: null, side: 'both' },
+  'LUMBRICALS OF HAND': { nerve: 'Median/Ulnar', abbr: null, side: 'both', note: 'Lumbricalis I in PDF; mesh is grouped lumbricals' },
 
   // Upper Limb - Ulnar Nerve
   'FLEXOR CARPI ULNARIS': { nerve: 'Ulnar', abbr: 'FCU', side: 'both', note: 'C7, C8, T1' },
@@ -82,6 +83,18 @@ export const PRIORITY_MUSCLES = {
   'FIBULARIS LONGUS': { nerve: 'Superficial peroneal', abbr: 'PL', side: 'both' },
   'PERONEUS BREVIS': { nerve: 'Superficial peroneal', abbr: 'PB', side: 'both' },
   'FIBULARIS BREVIS': { nerve: 'Superficial peroneal', abbr: 'PB', side: 'both' },
+
+  // Intrinsic foot muscles - "A lab kis izmai" in PDF
+  'ABDUCTOR HALLUCIS': { nerve: 'Medial plantar', abbr: null, side: 'both', note: 'Small intrinsic foot muscles' },
+  'FLEXOR DIGITORUM BREVIS': { nerve: 'Medial plantar', abbr: 'FDB', side: 'both', note: 'Small intrinsic foot muscles' },
+  'FLEXOR ACCESSORIUS': { nerve: 'Lateral plantar', abbr: null, side: 'both', note: 'Quadratus plantae / small intrinsic foot muscles' },
+  'FLEXOR HALLUCIS BREVIS': { nerve: 'Medial plantar', abbr: 'FHB', side: 'both', note: 'Small intrinsic foot muscles' },
+  'ADDUCTOR HALLUCIS': { nerve: 'Lateral plantar', abbr: null, side: 'both', note: 'Small intrinsic foot muscles' },
+  'ABDUCTOR DIGITI MINIMI OF FOOT': { nerve: 'Lateral plantar', abbr: null, side: 'both', note: 'Small intrinsic foot muscles' },
+  'FLEXOR DIGITI MINIMI BREVIS OF FOOT': { nerve: 'Lateral plantar', abbr: null, side: 'both', note: 'Small intrinsic foot muscles' },
+  'OPPONENS DIGITI MINIMI OF FOOT': { nerve: 'Lateral plantar', abbr: null, side: 'both', note: 'Small intrinsic foot muscles' },
+  'LUMBRICAL OF FOOT': { nerve: 'Medial/Lateral plantar', abbr: null, side: 'both', note: 'Small intrinsic foot muscles' },
+  'PLANTAR INTEROSSEOUS': { nerve: 'Lateral plantar', abbr: null, side: 'both', note: 'Small intrinsic foot muscles' },
 };
 
 /**
@@ -90,62 +103,9 @@ export const PRIORITY_MUSCLES = {
  * @returns {boolean} - True if this is a priority muscle
  */
 export function isPriorityMuscle(muscleName) {
-  const normalized = muscleName.toUpperCase().trim();
+  const normalized = normalizePriorityName(muscleName);
 
-  // Direct match
-  for (const key of Object.keys(PRIORITY_MUSCLES)) {
-    if (normalized.includes(key)) {
-      return true;
-    }
-  }
-
-  // Check for partial matches
-  // Shoulder & Upper Back
-  if (normalized.includes('TRAPEZIUS')) return true;
-  if (normalized.includes('RHOMBOID')) return true;
-  if (normalized.includes('SERRATUS ANTERIOR')) return true;
-  if (normalized.includes('PECTORALIS MAJOR')) return true;
-  if (normalized.includes('SUPRASPINATUS')) return true;
-  if (normalized.includes('INFRASPINATUS')) return true;
-  if (normalized.includes('LATISSIMUS DORSI')) return true;
-  if (normalized.includes('TERES MAJOR')) return true;
-  if (normalized.includes('DELTOID')) return true;
-
-  // Upper Arm
-  if (normalized.includes('BICEPS BRACHII')) return true;
-  if (normalized.includes('TRICEPS BRACHII')) return true;
-  if (normalized.includes('TRICEPS') && !normalized.includes('SURAE')) return true;
-
-  // Forearm
-  if (normalized.includes('BRACHIORADIALIS')) return true;
-  if (normalized.includes('PRONATOR TERES')) return true;
-  if (normalized.includes('SUPINATOR')) return true;
-  if (normalized.includes('EXTENSOR CARPI')) return true;
-  if (normalized.includes('FLEXOR CARPI')) return true;
-  if (normalized.includes('EXTENSOR DIGITORUM') && !normalized.includes('SUPERFICIAL')) return true;
-  if (normalized.includes('FLEXOR DIGITORUM')) return true;
-  if (normalized.includes('POLLICIS')) return true;
-
-  // Hand
-  if (normalized.includes('INTEROSSEOUS') || normalized.includes('INTEROSSEUS')) return true;
-
-  // Lower Limb
-  if (normalized.includes('ILIOPSOAS')) return true;
-  if (normalized.includes('QUADRICEPS')) return true;
-  if (normalized.includes('VASTUS')) return true;
-  if (normalized.includes('RECTUS FEMORIS')) return true;
-  if (normalized.includes('BICEPS FEMORIS')) return true;
-  if (normalized.includes('ADDUCTOR') && !normalized.includes('POLLICIS')) return true;
-  if (normalized.includes('GLUTEUS')) return true;
-  if (normalized.includes('TENSOR FASCIAE')) return true;
-  if (normalized.includes('SEMITENDINOSUS')) return true;
-  if (normalized.includes('SEMIMEMBRANOSUS')) return true;
-  if (normalized.includes('GASTROCNEMIUS')) return true;
-  if (normalized.includes('SOLEUS')) return true;
-  if (normalized.includes('TIBIALIS')) return true;
-  if (normalized.includes('PERONEUS') || normalized.includes('FIBULARIS')) return true;
-
-  return false;
+  return Object.keys(PRIORITY_MUSCLES).some(key => priorityNameMatches(normalized, key));
 }
 
 /**
@@ -154,13 +114,68 @@ export function isPriorityMuscle(muscleName) {
  * @returns {object|null} - Badge info or null
  */
 export function getPriorityInfo(muscleName) {
-  const normalized = muscleName.toUpperCase().trim();
+  const normalized = normalizePriorityName(muscleName);
 
   for (const [key, info] of Object.entries(PRIORITY_MUSCLES)) {
-    if (normalized.includes(key)) {
+    if (priorityNameMatches(normalized, key)) {
       return info;
     }
   }
 
   return null;
+}
+
+function normalizePriorityName(muscleName) {
+  return muscleName
+    .toUpperCase()
+    .replace(/\s*\(\d+\)\s*$/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b(LEFT|RIGHT)\b/g, '')
+    .replace(/^.+?\s+(PART|HEAD|BELLY)\s+OF\s+/i, '')
+    .replace(/^SET\s+OF\s+/i, '')
+    .replace(/^(FIRST|SECOND|THIRD|FOURTH|FIFTH)\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function priorityNameMatches(normalized, key) {
+  if (normalized === key) return true;
+
+  const exactAliases = {
+    DELTOID: ['DELTOIDEUS'],
+    DELTOIDEUS: ['DELTOID'],
+    TRICEPS: ['TRICEPS BRACHII'],
+    ILIOPSOAS: ['ILIACUS', 'PSOAS MAJOR'],
+    'LUMBRICALS OF HAND': ['LUMBRICALIS I'],
+    'ABDUCTOR DIGITI MINIMI': ['ABDUCTOR DIGITI MINIMI OF HAND'],
+    'FLEXOR DIGITI MINIMI': ['FLEXOR DIGITI MINIMI OF HAND', 'FLEXOR DIGITI MINIMI BREVIS OF HAND'],
+    'DORSAL INTEROSSEOUS': ['DORSAL INTEROSSEI OF HAND'],
+    'INTEROSSEUS DORSALIS': ['DORSAL INTEROSSEI OF HAND'],
+    'PALMAR INTEROSSEOUS': ['PALMAR INTEROSSEI OF HAND'],
+    'INTEROSSEUS PALMARIS': ['PALMAR INTEROSSEI OF HAND'],
+    'QUADRICEPS FEMORIS': ['RECTUS FEMORIS', 'VASTUS MEDIALIS', 'VASTUS LATERALIS', 'VASTUS INTERMEDIUS'],
+    'PERONEUS LONGUS': ['FIBULARIS LONGUS'],
+    'PERONEUS BREVIS': ['FIBULARIS BREVIS'],
+    'FIBULARIS LONGUS': ['PERONEUS LONGUS'],
+    'FIBULARIS BREVIS': ['PERONEUS BREVIS']
+  };
+
+  if (exactAliases[key]?.includes(normalized)) return true;
+
+  if (key === 'ADDUCTOR') {
+    return normalized.startsWith('ADDUCTOR ') &&
+      !normalized.includes('POLLICIS') &&
+      !normalized.includes('HALLUCIS');
+  }
+
+  const preciseContains = [
+    'RHOMBOID',
+    'TRAPEZIUS',
+    'PECTORALIS MAJOR',
+    'BICEPS BRACHII',
+    'TRICEPS BRACHII',
+    'LUMBRICALS OF HAND'
+  ];
+
+  return preciseContains.includes(key) && normalized.includes(key);
 }

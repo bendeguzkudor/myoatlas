@@ -10,6 +10,25 @@
  */
 
 export const MUSCLE_WHITELIST = [
+  // ─── DIRECT CRANIAL / CERVICAL ───
+  'trapezius',
+
+  // ─── SHOULDER GIRDLE / PLEXUS BRACHIALIS ───
+  'rhomboid',
+  'rhomboideus',
+  'serratus anterior',
+  'clavicular part of left pectoralis major',
+  'clavicular part of right pectoralis major',
+  'sternocostal part of left pectoralis major',
+  'sternocostal part of right pectoralis major',
+  'supraspinatus',
+  'infraspinatus',
+  'latissimus dorsi',
+  'teres major',
+  'deltoid',
+  'deltoideus',
+  'biceps brachii',
+
   // ─── UPPER LIMB (Radial, Median, Ulnar nerves) ───
 
   // Radial nerve
@@ -31,12 +50,14 @@ export const MUSCLE_WHITELIST = [
   'flexor pollicis longus',
   'abductor pollicis brevis',
   'opponens pollicis',
+  'lumbricals',
 
   // Ulnar nerve
   'flexor carpi ulnaris',
   'abductor digiti minimi',        // hand
   'flexor digiti minimi',          // hand
-  'interosseous',                  // dorsal interosseous (first)
+  'interossei',                    // hand interossei sets
+  'interosseous',                  // legacy singular/plural variants
   'adductor pollicis',
 
   // ─── LOWER LIMB (Femoral, Obturator, Gluteal, Sciatic, Tibial, Peroneal nerves) ───
@@ -78,10 +99,21 @@ export const MUSCLE_WHITELIST = [
   'extensor digitorum longus',     // foot
   'extensor hallucis longus',
   'extensor digitorum brevis',     // foot
+  'extensor hallucis brevis',      // foot short extensors
 
   // Superficial fibular (peroneal) nerve
   'fibularis longus',              // also called peroneus longus
   'fibularis brevis',              // also called peroneus brevis
   'peroneus longus',
   'peroneus brevis',
+
+  // Intrinsic foot muscles listed as "A lab kis izmai" in the PDF
+  'abductor hallucis',
+  'flexor digitorum brevis',
+  'flexor accessorius',
+  'flexor hallucis brevis',
+  'adductor hallucis',
+  'opponens digiti minimi',
+  'lumbrical',
+  'plantar interosseous',
 ];

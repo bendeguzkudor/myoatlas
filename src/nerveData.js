@@ -9,6 +9,80 @@
  */
 
 export const NERVE_GROUPS = {
+  ACCESSORY: {
+    label: 'N. Accessorius',
+    region: 'upper_extremity',
+    color: '#94a3b8',
+    muscles: [
+      { name: 'Trapezius', segments: 'CN XI, C3, C4', matchPatterns: ['trapezius'] },
+    ],
+  },
+  DORSAL_SCAPULAR: {
+    label: 'N. Dorsalis Scapulae',
+    region: 'upper_extremity',
+    color: '#64748b',
+    muscles: [
+      { name: 'Rhomboideus', segments: 'C4, C5', matchPatterns: ['rhomboid'] },
+    ],
+  },
+  LONG_THORACIC: {
+    label: 'N. Thoracicus Longus',
+    region: 'upper_extremity',
+    color: '#0ea5e9',
+    muscles: [
+      { name: 'Serratus Anterior', segments: 'C5, C6, C7', matchPatterns: ['serratus anterior'] },
+    ],
+  },
+  PECTORAL: {
+    label: 'Nn. Pectorales',
+    region: 'upper_extremity',
+    color: '#f59e0b',
+    muscles: [
+      { name: 'Pectoralis Major - pars clavicularis', segments: 'C5, C6', nerve: 'N. pectoralis lateralis', matchPatterns: ['clavicular', 'pectoralis major'] },
+      { name: 'Pectoralis Major - pars sternocostalis', segments: 'C6, C7, C8', nerve: 'Nn. pectorales lateralis et medialis', matchPatterns: ['sternocostal', 'pectoralis major'] },
+    ],
+  },
+  SUPRASCAPULAR: {
+    label: 'N. Suprascapularis',
+    region: 'upper_extremity',
+    color: '#22c55e',
+    muscles: [
+      { name: 'Supraspinatus', segments: 'C5, C6', matchPatterns: ['supraspinatus'] },
+      { name: 'Infraspinatus', segments: 'C5, C6', matchPatterns: ['infraspinatus'] },
+    ],
+  },
+  THORACODORSAL: {
+    label: 'N. Thoracodorsalis',
+    region: 'upper_extremity',
+    color: '#14b8a6',
+    muscles: [
+      { name: 'Latissimus Dorsi', segments: 'C6, C7, C8', matchPatterns: ['latissimus dorsi'] },
+    ],
+  },
+  SUBSCAPULAR: {
+    label: 'N. Subscapularis',
+    region: 'upper_extremity',
+    color: '#84cc16',
+    muscles: [
+      { name: 'Teres Major', segments: 'C5, C6, C7', matchPatterns: ['teres major'] },
+    ],
+  },
+  AXILLARY: {
+    label: 'N. Axillaris',
+    region: 'upper_extremity',
+    color: '#a855f7',
+    muscles: [
+      { name: 'Deltoideus', segments: 'C5, C6', matchPatterns: ['deltoid'] },
+    ],
+  },
+  MUSCULOCUTANEOUS: {
+    label: 'N. Musculocutaneus',
+    region: 'upper_extremity',
+    color: '#ec4899',
+    muscles: [
+      { name: 'Biceps Brachii', segments: 'C5, C6', matchPatterns: ['biceps brachii'] },
+    ],
+  },
   N_RADIALIS: {
     label: 'N. Radialis',
     region: 'upper_extremity',
@@ -37,6 +111,7 @@ export const NERVE_GROUPS = {
       { name: 'Flexor Pollicis Longus', segments: 'C7, C8', nerve: 'N. interosseus anterior', matchPatterns: ['flexor pollicis longus'] },
       { name: 'Abductor Pollicis Brevis', segments: 'C8, T1', matchPatterns: ['abductor pollicis brevis'] },
       { name: 'Opponens Pollicis', segments: 'C8, T1', matchPatterns: ['opponens pollicis'] },
+      { name: 'Lumbricalis I', segments: 'C8, T1', matchPatterns: ['lumbricals', 'hand'] },
     ],
   },
   N_ULNARIS: {
@@ -47,7 +122,9 @@ export const NERVE_GROUPS = {
       { name: 'Flexor Carpi Ulnaris', segments: 'C7, C8, T1', matchPatterns: ['flexor carpi ulnaris'] },
       { name: 'Flexor Digitorum Profundus III-IV', segments: 'C7, C8', matchPatterns: ['flexor digitorum profundus'] },
       { name: 'Abductor Digiti Minimi (Hand)', segments: 'C8, T1', matchPatterns: ['abductor digiti minimi', 'hand'] },
+      { name: 'Flexor Digiti Minimi', segments: 'C8, T1', matchPatterns: ['flexor digiti minimi', 'hand'] },
       { name: 'First Dorsal Interosseous', segments: 'C8, T1', matchPatterns: ['dorsal inteross', 'hand'] },
+      { name: 'Palmar Interosseous II', segments: 'C8, T1', matchPatterns: ['palmar inteross', 'hand'] },
       { name: 'Adductor Pollicis', segments: 'C8, T1', matchPatterns: ['adductor pollicis'] },
     ],
   },
@@ -116,6 +193,23 @@ export const NERVE_GROUPS = {
       { name: 'Flexor Hallucis Longus', segments: 'L5, S1, S2', matchPatterns: ['flexor hallucis longus'] },
     ],
   },
+  PLANTAR: {
+    label: 'Nn. Plantares',
+    region: 'lower_extremity',
+    color: '#65a30d',
+    muscles: [
+      { name: 'Small Muscles of the Foot', segments: 'S1, S2', matchPatterns: ['foot'] },
+      { name: 'Abductor Hallucis', segments: 'S1, S2', nerve: 'N. plantaris medialis', matchPatterns: ['abductor hallucis'] },
+      { name: 'Flexor Digitorum Brevis', segments: 'S1, S2', nerve: 'N. plantaris medialis', matchPatterns: ['flexor digitorum brevis'] },
+      { name: 'Flexor Accessorius', segments: 'S1, S2', nerve: 'N. plantaris lateralis', matchPatterns: ['flexor accessorius'] },
+      { name: 'Flexor Hallucis Brevis', segments: 'S1, S2', nerve: 'N. plantaris medialis', matchPatterns: ['flexor hallucis brevis'] },
+      { name: 'Adductor Hallucis', segments: 'S1, S2', nerve: 'N. plantaris lateralis', matchPatterns: ['adductor hallucis'] },
+      { name: 'Abductor Digiti Minimi (Foot)', segments: 'S1, S2', nerve: 'N. plantaris lateralis', matchPatterns: ['abductor digiti minimi', 'foot'] },
+      { name: 'Flexor Digiti Minimi Brevis (Foot)', segments: 'S1, S2', nerve: 'N. plantaris lateralis', matchPatterns: ['flexor digiti minimi', 'foot'] },
+      { name: 'Lumbricals (Foot)', segments: 'S1, S2', matchPatterns: ['lumbrical', 'foot'] },
+      { name: 'Plantar Interossei', segments: 'S1, S2', nerve: 'N. plantaris lateralis', matchPatterns: ['plantar interosseous'] },
+    ],
+  },
   DEEP_PERONEAL: {
     label: 'N. Fibularis Profundus',
     region: 'lower_extremity',
@@ -168,4 +262,3 @@ export function buildNerveMeshMap(muscleMeshes) {
 
   return map;
 }
-

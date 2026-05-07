@@ -3,10 +3,18 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildBody, highlightMaterial, selectedMaterial, boneMaterial, groupMaterials, deriveRatingKey } from './bodyBuilder.js';
 import { MUSCLE_GROUPS } from './muscleData.js';
 import { NERVE_GROUPS, buildNerveMeshMap } from './nerveData.js';
-import { STRENGTH_LEVELS, ratingMaterials, setRating, getRating, getAllRatings, clearAllRatings, getRatingStats, getRatingMaterial, loadFromStorage } from './ratingSystem.js';
+import { STRENGTH_LEVELS, setRating, getRating, getAllRatings, clearAllRatings, getRatingStats, getRatingMaterial, loadFromStorage } from './ratingSystem.js';
 import { exportJSON, exportPDF } from './exportService.js';
 import { isPriorityMuscle, getPriorityInfo } from './priorityMuscles.js';
-import { createReflexHotspots, animateHotspots, updateHotspotAppearance } from './reflexHotspots.js';
+import { EXAM_MUSCLE_GROUPS } from './examMuscleList.js';
+import {
+  createReflexHotspots,
+  createPyramidalHotspots,
+  animateHotspots,
+  updateHotspotAppearance,
+  getReflexDefinitionsForHotspot,
+  getPyramidalSignsForHotspot
+} from './reflexHotspots.js';
 import { loadReflexesFromStorage, setReflexTest, getReflexTest, setPyramidalSign, getPyramidalSign, clearAllReflexData } from './reflexSystem.js';
 import { REFLEX_GRADES } from './reflexData.js';
 
@@ -286,19 +294,24 @@ let uniqueRatingKeys = [];           // Sorted unique rating keys
 let groupingMode = 'anatomy';
 
 // Priority filter: 'all' or 'priority'
-let priorityFilter = 'all';
+let priorityFilter = localStorage.getItem('myoatlas_priority_filter') || 'priority';
+if (!['all', 'priority'].includes(priorityFilter)) priorityFilter = 'priority';
 
 // App mode: 'exploration' or 'examination' (chosen at startup)
 let APP_MODE = null;
 
 // Group heads setting: whether to group muscle heads/parts for rating
-let groupHeads = localStorage.getItem('groupHeads') !== 'false'; // default true
+const groupHeads = true;
 
-// Reflex testing mode
-let reflexMode = localStorage.getItem('myoatlas_reflex_mode_active') === 'true';
-let hideMusclesInReflexMode = localStorage.getItem('myoatlas_hide_muscles_reflex') === 'true';
+// Examination view: 'muscle', 'reflex', or 'pyramidal'
+let examView = localStorage.getItem('myoatlas_exam_view')
+  || (localStorage.getItem('myoatlas_reflex_mode_active') === 'true' ? 'reflex' : 'muscle');
+if (!['muscle', 'reflex', 'pyramidal'].includes(examView)) examView = 'muscle';
+let hideMusclesInReflexMode = localStorage.getItem('myoatlas_exam_muscles_visible') !== 'true';
 let reflexHotspotsGroup = null;
 let reflexHotspots = []; // Array for raycasting
+let pyramidalHotspotsGroup = null;
+let pyramidalHotspots = [];
 let selectedReflexHotspot = null;
 
 // ───────────── Raycasting & Interaction ─────────────
@@ -307,6 +320,12 @@ const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let hoveredMesh = null;
 let selectedMesh = null;
+let canvasPointerDown = false;
+let canvasPointerMoved = false;
+let canvasPointerStartX = 0;
+let canvasPointerStartY = 0;
+let suppressNextCanvasClick = false;
+const POINTER_DRAG_THRESHOLD = 6;
 
 // ───────────── Visible Mesh Cache ─────────────
 
@@ -327,6 +346,16 @@ function invalidateVisibleMeshes() {
 
 canvas.addEventListener('mousemove', onMouseMove);
 canvas.addEventListener('click', onClick);
+canvas.addEventListener('pointerdown', onCanvasPointerDown);
+canvas.addEventListener('pointermove', onCanvasPointerMove);
+canvas.addEventListener('pointerup', onCanvasPointerUp);
+canvas.addEventListener('pointercancel', onCanvasPointerCancel);
+
+function getActiveExamHotspots() {
+  if (examView === 'reflex') return reflexHotspots;
+  if (examView === 'pyramidal') return pyramidalHotspots;
+  return [];
+}
 
 function onMouseMove(event) {
   if (muscleMeshes.length === 0) return;
@@ -336,11 +365,8 @@ function onMouseMove(event) {
 
   raycaster.setFromCamera(mouse, camera);
 
-  // Extend raycasting to include reflex hotspots when reflex mode is active
-  let targets = getVisibleMeshes();
-  if (reflexMode && reflexHotspots.length > 0) {
-    targets = targets.concat(reflexHotspots);
-  }
+  const activeHotspots = getActiveExamHotspots();
+  const targets = isHotspotExamView() ? activeHotspots : getVisibleMeshes();
 
   const intersects = raycaster.intersectObjects(targets, false);
 
@@ -353,8 +379,8 @@ function onMouseMove(event) {
     if (mesh !== selectedMesh) {
       hoveredMesh = mesh;
 
-      // For reflex hotspots, brighten the existing color instead of replacing it
-      if (mesh.userData.type === 'reflexHotspot') {
+      // For exam hotspots, brighten the existing color instead of replacing it
+      if (mesh.userData.type === 'reflexHotspot' || mesh.userData.type === 'pyramidalHotspot') {
         // Store original material if not already stored
         if (!mesh.userData.originalMaterial) {
           mesh.userData.originalMaterial = mesh.material;
@@ -377,49 +403,85 @@ function onMouseMove(event) {
 
 function onClick(event) {
   if (muscleMeshes.length === 0) return;
+  if (suppressNextCanvasClick) {
+    suppressNextCanvasClick = false;
+    return;
+  }
 
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
   raycaster.setFromCamera(mouse, camera);
 
-  // Extend raycasting to include reflex hotspots when reflex mode is active
-  let targets = getVisibleMeshes();
-  if (reflexMode && reflexHotspots.length > 0) {
-    targets = targets.concat(reflexHotspots);
-  }
+  const activeHotspots = getActiveExamHotspots();
+  const targets = isHotspotExamView() ? activeHotspots : getVisibleMeshes();
 
   const intersects = raycaster.intersectObjects(targets, false);
-
-  if (selectedMesh) {
-    resetMeshAppearance(selectedMesh);
-    selectedMesh = null;
-  }
 
   if (intersects.length > 0) {
     const obj = intersects[0].object;
 
-    // Check if it's a reflex hotspot or muscle mesh
-    if (obj.userData.type === 'reflexHotspot') {
-      // Reflex hotspot clicked
+    // Check if it's an exam hotspot or muscle mesh
+    if (obj.userData.type === 'reflexHotspot' || obj.userData.type === 'pyramidalHotspot') {
+      if (selectedReflexHotspot && selectedReflexHotspot !== obj) {
+        selectedReflexHotspot.userData.isSelected = false;
+        updateHotspotAppearance(selectedReflexHotspot);
+      }
       selectedReflexHotspot = obj;
-      showReflexPanel(obj.userData);
-      zoomToMesh(obj);
+      selectedReflexHotspot.userData.isSelected = true;
+      updateHotspotAppearance(selectedReflexHotspot);
+      showExamHotspotPanel(obj.userData);
     } else {
+      if (selectedMesh === obj && selectedExamEntryIndex === -1) {
+        clearCurrentSelection();
+        return;
+      }
+      if (selectedMesh && selectedMesh !== obj) {
+        resetMeshAppearance(selectedMesh);
+      }
       // Muscle mesh clicked (existing flow)
       selectedMesh = obj;
+      selectedExamEntryIndex = -1;
       obj.material = selectedMaterial;
       showInfoPanel(obj.userData);
       zoomToMesh(obj);
     }
-  } else {
-    hideInfoPanel();
   }
 }
 
+function onCanvasPointerDown(event) {
+  if (event.button !== 0) return;
+  canvasPointerDown = true;
+  canvasPointerMoved = false;
+  canvasPointerStartX = event.clientX;
+  canvasPointerStartY = event.clientY;
+}
+
+function onCanvasPointerMove(event) {
+  if (!canvasPointerDown) return;
+  const dx = event.clientX - canvasPointerStartX;
+  const dy = event.clientY - canvasPointerStartY;
+  if (Math.hypot(dx, dy) >= POINTER_DRAG_THRESHOLD) {
+    canvasPointerMoved = true;
+  }
+}
+
+function onCanvasPointerUp() {
+  if (!canvasPointerDown) return;
+  suppressNextCanvasClick = canvasPointerMoved;
+  canvasPointerDown = false;
+  canvasPointerMoved = false;
+}
+
+function onCanvasPointerCancel() {
+  canvasPointerDown = false;
+  canvasPointerMoved = false;
+  suppressNextCanvasClick = false;
+}
+
 function resetMeshAppearance(mesh) {
-  // For reflex hotspots, restore original material
-  if (mesh.userData.type === 'reflexHotspot' && mesh.userData.originalMaterial) {
+  // For exam hotspots, restore original material
+  if ((mesh.userData.type === 'reflexHotspot' || mesh.userData.type === 'pyramidalHotspot') && mesh.userData.originalMaterial) {
     mesh.material = mesh.userData.originalMaterial;
     return;
   }
@@ -437,36 +499,46 @@ function resetMeshAppearance(mesh) {
 // ───────────── Rating System Integration ─────────────
 
 function rateMuscle(mesh, strength) {
-  const ratingKey = mesh.userData.ratingKey;
-  if (!ratingKey) return;
+  const examEntry = orderedExamEntries[selectedExamEntryIndex] || null;
+  const ratingKeys = examEntry ? getExamEntryRatingKeys(examEntry) : [mesh.userData.ratingKey].filter(Boolean);
+  if (ratingKeys.length === 0) return;
 
-  setRating(ratingKey, strength);
-
-  // Apply rating material to ALL meshes sharing this ratingKey
-  const meshes = ratingKeyToMeshes.get(ratingKey) || [];
   const mat = getRatingMaterial(strength);
-  for (const m of meshes) {
-    m.material = mat; // Apply to all meshes including selected
+
+  for (const ratingKey of ratingKeys) {
+    setRating(ratingKey, strength);
+
+    const meshes = ratingKeyToMeshes.get(ratingKey) || [];
+    for (const m of meshes) {
+      m.material = mat;
+    }
   }
 
   updateUI();
+  scrollSelectedExamEntryIntoView();
+  applyExamSelectionFocus();
 
-  // Clear selection highlight so user can see the new color
-  if (selectedMesh) {
+  if (autoProceed && APP_MODE === 'examination') {
+    setTimeout(() => selectNextExamEntry(), 150);
+  } else if (selectedMesh) {
     selectedMesh = null;
+    hideInfoPanel();
   }
 
-  // Hide info panel/sheet
-  hideInfoPanel();
+  updateMuscleListRatings();
+  updateWorkflowButtons();
+}
 
-  // Return to front view after rating for better workflow
-  setTimeout(() => {
-    const dist = defaultCameraPos.distanceTo(defaultLookAt);
-    animateCamera(
-      new THREE.Vector3(defaultLookAt.x, defaultLookAt.y, defaultLookAt.z + dist),
-      defaultLookAt.clone(), 800
-    );
-  }, 300); // Small delay so user sees the rating applied
+function clearCurrentSelection() {
+  if (selectedMesh) {
+    resetMeshAppearance(selectedMesh);
+    selectedMesh = null;
+  }
+  selectedExamEntryIndex = -1;
+  hideInfoPanel();
+  updateMuscleListSelection();
+  updateWorkflowButtons();
+  applyExamSelectionFocus();
 }
 
 // ───────────── Info Panel ─────────────
@@ -488,6 +560,8 @@ infoClose.addEventListener('click', () => {
     resetMeshAppearance(selectedMesh);
     selectedMesh = null;
   }
+  selectedExamEntryIndex = -1;
+  updateWorkflowButtons();
 });
 
 function showInfoPanel(userData) {
@@ -496,6 +570,7 @@ function showInfoPanel(userData) {
   } else {
     showDesktopInfoPanel(userData);
   }
+  applyExamSelectionFocus();
 }
 
 function showDesktopInfoPanel(userData) {
@@ -669,140 +744,149 @@ function showMobileSheet(userData) {
   updateMuscleListSelection();
 }
 
-// ───────────── Reflex Panel Functions ─────────────
+// ───────────── Exam Hotspot Panel Functions ─────────────
 
-function showReflexPanel(hotspotData) {
+function showExamHotspotPanel(hotspotData) {
   if (isMobile()) {
-    showMobileReflexSheet(hotspotData);
+    showMobileExamSheet(hotspotData);
   } else {
-    showDesktopReflexPanel(hotspotData);
+    showDesktopExamPanel(hotspotData);
   }
 }
 
-function showDesktopReflexPanel(hotspotData) {
+function getSideLabel(side) {
+  return side.charAt(0).toUpperCase() + side.slice(1);
+}
+
+function renderReflexRows(container, hotspotData, compact = false) {
+  container.innerHTML = '';
+  const reflexes = getReflexDefinitionsForHotspot(hotspotData);
+
+  reflexes.forEach(reflexDef => {
+    const currentTest = getReflexTest(reflexDef.id, hotspotData.side);
+    const row = document.createElement('div');
+    row.className = compact ? 'exam-test-row compact' : 'exam-test-row';
+
+    const details = document.createElement('div');
+    details.className = 'exam-test-details';
+    details.innerHTML = `
+      <div class="exam-test-name">${reflexDef.label}</div>
+      <div class="exam-test-meta">${reflexDef.nerve} - ${reflexDef.spinalLevel}</div>
+      <div class="exam-test-notes">${reflexDef.testingNotes}</div>
+    `;
+
+    const buttons = document.createElement('div');
+    buttons.className = compact ? 'mobile-reflex-grade-buttons inline' : 'reflex-grade-buttons inline';
+
+    Object.entries(REFLEX_GRADES).forEach(([grade, gradeDef]) => {
+      const btn = document.createElement('button');
+      btn.className = compact ? 'mobile-grade-btn' : 'reflex-grade-btn';
+      btn.dataset.grade = grade;
+      btn.dataset.reflexId = reflexDef.id;
+      btn.dataset.side = hotspotData.side;
+      btn.title = gradeDef.description;
+      const gradeLabel = gradeDef.label.replace(` (${gradeDef.shortLabel})`, '');
+      btn.innerHTML = `<span class="grade-symbol">${gradeDef.shortLabel}</span><span class="grade-label">${compact ? gradeDef.description : gradeLabel}</span>`;
+      btn.classList.toggle('active', currentTest?.value === grade);
+      buttons.appendChild(btn);
+    });
+
+    row.appendChild(details);
+    row.appendChild(buttons);
+    container.appendChild(row);
+  });
+}
+
+function renderPyramidalRows(container, hotspotData) {
+  container.innerHTML = '';
+  const signs = getPyramidalSignsForHotspot(hotspotData);
+
+  signs.forEach(signDef => {
+    const currentSign = getPyramidalSign(signDef.id, hotspotData.side);
+    const row = document.createElement('div');
+    row.className = 'exam-test-row pyramidal';
+
+    const details = document.createElement('div');
+    details.className = 'exam-test-details';
+    details.innerHTML = `
+      <div class="exam-test-name">${signDef.label}</div>
+      <div class="exam-test-meta">${signDef.description}</div>
+      <div class="exam-test-notes">${signDef.testingNotes}</div>
+    `;
+
+    const label = document.createElement('label');
+    label.className = 'checkbox-label present-toggle';
+    label.innerHTML = `
+      <input type="checkbox" data-sign="${signDef.id}" data-side="${hotspotData.side}" ${currentSign?.isPresent ? 'checked' : ''}>
+      <span>Present</span>
+    `;
+
+    row.appendChild(details);
+    row.appendChild(label);
+    container.appendChild(row);
+  });
+}
+
+function showDesktopExamPanel(hotspotData) {
   const panel = document.getElementById('reflex-panel');
   if (!panel) return;
 
-  const reflexDef = hotspotData.definition;
+  const isPyramidal = hotspotData.type === 'pyramidalHotspot';
+  const panelBody = document.getElementById('exam-panel-body');
+  const titleEl = document.getElementById('reflex-name');
+  const sideEl = document.getElementById('reflex-side');
+  const modeEl = document.getElementById('exam-panel-mode');
 
-  // Populate panel with reflex data
-  const reflexNameEl = document.getElementById('reflex-name');
-  const reflexSideEl = document.getElementById('reflex-side');
-  const reflexNerveEl = document.getElementById('reflex-nerve');
-  const reflexSpinalLevelEl = document.getElementById('reflex-spinal-level');
-  const reflexTestingNotesEl = document.getElementById('reflex-testing-notes');
+  if (titleEl) titleEl.textContent = hotspotData.definition.label;
+  if (sideEl) sideEl.textContent = getSideLabel(hotspotData.side);
+  if (modeEl) modeEl.textContent = isPyramidal ? 'Pyramidal signs exam' : 'Reflex exam';
 
-  if (reflexNameEl) reflexNameEl.textContent = reflexDef.label;
-  if (reflexSideEl) reflexSideEl.textContent = hotspotData.side.charAt(0).toUpperCase() + hotspotData.side.slice(1);
-  if (reflexNerveEl) reflexNerveEl.textContent = reflexDef.nerve;
-  if (reflexSpinalLevelEl) reflexSpinalLevelEl.textContent = reflexDef.spinalLevel;
-  if (reflexTestingNotesEl) reflexTestingNotesEl.textContent = reflexDef.testingNotes;
+  const settingsSection = document.getElementById('settings-section');
+  if (settingsSection) settingsSection.open = false;
 
-  // Update grade buttons based on current test
-  const currentTest = getReflexTest(hotspotData.reflexId, hotspotData.side);
-  updateReflexGradeButtons(currentTest?.value);
-
-  // Show/hide appropriate pyramidal signs section based on region
-  const pyramidalLower = document.getElementById('pyramidal-signs-lower');
-  const pyramidalUpper = document.getElementById('pyramidal-signs-upper');
-
-  if (reflexDef.region === 'lower_limb') {
-    if (pyramidalLower) pyramidalLower.classList.remove('hidden');
-    if (pyramidalUpper) pyramidalUpper.classList.add('hidden');
-  } else if (reflexDef.region === 'upper_limb') {
-    if (pyramidalLower) pyramidalLower.classList.add('hidden');
-    if (pyramidalUpper) pyramidalUpper.classList.remove('hidden');
-  } else {
-    if (pyramidalLower) pyramidalLower.classList.add('hidden');
-    if (pyramidalUpper) pyramidalUpper.classList.add('hidden');
-  }
-
-  // Update pyramidal sign checkboxes
-  updatePyramidalSignCheckboxes(hotspotData.side);
-
-  // Store current hotspot data for grade button handlers
-  panel.dataset.reflexId = hotspotData.reflexId;
+  panel.dataset.hotspotType = hotspotData.type;
+  panel.dataset.hotspotId = hotspotData.hotspotId;
   panel.dataset.side = hotspotData.side;
 
-  // Show panel
+  if (panelBody) {
+    if (isPyramidal) {
+      renderPyramidalRows(panelBody, hotspotData);
+    } else {
+      renderReflexRows(panelBody, hotspotData);
+    }
+  }
+
   panel.classList.remove('hidden');
 
-  // Hide muscle info panel if open
   const selectionCard = document.getElementById('selection-card');
   if (selectionCard) selectionCard.classList.add('hidden');
 }
 
-function showMobileReflexSheet(hotspotData) {
+function showMobileExamSheet(hotspotData) {
   const sheet = document.getElementById('mobile-reflex-sheet');
   if (!sheet) return;
 
-  const reflexDef = hotspotData.definition;
-
-  // Populate mobile sheet
+  const isPyramidal = hotspotData.type === 'pyramidalHotspot';
   const nameEl = document.getElementById('mobile-reflex-name');
-  if (nameEl) nameEl.textContent = `${reflexDef.label} (${hotspotData.side})`;
+  const modeEl = document.getElementById('mobile-exam-mode');
+  const body = document.getElementById('mobile-exam-body');
 
-  // Update grade buttons
-  const currentTest = getReflexTest(hotspotData.reflexId, hotspotData.side);
-  updateMobileReflexGradeButtons(currentTest?.value);
+  if (nameEl) nameEl.textContent = `${hotspotData.definition.label} (${hotspotData.side})`;
+  if (modeEl) modeEl.textContent = isPyramidal ? 'Pyramidal signs exam' : 'Reflex exam';
 
-  // Show/hide appropriate pyramidal signs section
-  const pyramidalLower = document.getElementById('mobile-pyramidal-signs-lower');
-  const pyramidalUpper = document.getElementById('mobile-pyramidal-signs-upper');
-
-  if (reflexDef.region === 'lower_limb') {
-    if (pyramidalLower) pyramidalLower.classList.remove('hidden');
-    if (pyramidalUpper) pyramidalUpper.classList.add('hidden');
-  } else if (reflexDef.region === 'upper_limb') {
-    if (pyramidalLower) pyramidalLower.classList.add('hidden');
-    if (pyramidalUpper) pyramidalUpper.classList.remove('hidden');
-  } else {
-    if (pyramidalLower) pyramidalLower.classList.add('hidden');
-    if (pyramidalUpper) pyramidalUpper.classList.add('hidden');
-  }
-
-  // Store current hotspot data
-  sheet.dataset.reflexId = hotspotData.reflexId;
+  sheet.dataset.hotspotType = hotspotData.type;
+  sheet.dataset.hotspotId = hotspotData.hotspotId;
   sheet.dataset.side = hotspotData.side;
 
-  // Show sheet
+  if (body) {
+    if (isPyramidal) {
+      renderPyramidalRows(body, hotspotData);
+    } else {
+      renderReflexRows(body, hotspotData, true);
+    }
+  }
+
   sheet.classList.remove('hidden');
-}
-
-function updateReflexGradeButtons(activeGrade) {
-  const buttons = document.querySelectorAll('.reflex-grade-btn');
-  buttons.forEach(btn => {
-    const grade = btn.dataset.grade;
-    if (grade === activeGrade) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-}
-
-function updateMobileReflexGradeButtons(activeGrade) {
-  const buttons = document.querySelectorAll('.mobile-grade-btn');
-  buttons.forEach(btn => {
-    const grade = btn.dataset.grade;
-    if (grade === activeGrade) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-}
-
-function updatePyramidalSignCheckboxes(side) {
-  // Update all pyramidal sign checkboxes (both sides)
-  const allCheckboxes = document.querySelectorAll('input[data-sign][data-side]');
-
-  allCheckboxes.forEach(checkbox => {
-    const signId = checkbox.dataset.sign;
-    const checkboxSide = checkbox.dataset.side;
-    const sign = getPyramidalSign(signId, checkboxSide);
-    checkbox.checked = sign?.isPresent || false;
-  });
 }
 
 function hideReflexPanel() {
@@ -811,6 +895,24 @@ function hideReflexPanel() {
 
   const mobileSheet = document.getElementById('mobile-reflex-sheet');
   if (mobileSheet) mobileSheet.classList.add('hidden');
+
+  if (selectedReflexHotspot) {
+    selectedReflexHotspot.userData.isSelected = false;
+    updateHotspotAppearance(selectedReflexHotspot);
+  }
+  selectedReflexHotspot = null;
+
+  const settingsSection = document.getElementById('settings-section');
+  if (settingsSection) settingsSection.open = true;
+}
+
+function refreshExamHotspotAppearances() {
+  if (reflexHotspots) {
+    reflexHotspots.forEach(hotspot => updateHotspotAppearance(hotspot));
+  }
+  if (pyramidalHotspots) {
+    pyramidalHotspots.forEach(hotspot => updateHotspotAppearance(hotspot));
+  }
 }
 
 function hideMobileSheet() {
@@ -960,6 +1062,7 @@ function hideInfoPanel() {
     selectionCard.classList.add('hidden');
     updateMuscleListSelection();
   }
+  applyExamSelectionFocus();
 }
 
 function updateRatingButtons(activeStrength) {
@@ -1092,6 +1195,43 @@ searchInput.addEventListener('input', () => {
 
     if (query.length < 2 || muscleMeshes.length === 0) return;
 
+    if (APP_MODE === 'examination') {
+      const matches = orderedExamEntries
+        .map((entry, index) => ({ entry, index }))
+        .filter(({ entry }) => entry.label.toLowerCase().includes(query));
+
+      if (matches.length === 0) {
+        const emptyState = document.createElement('div');
+        emptyState.className = 'search-empty';
+        emptyState.innerHTML = `
+          <span class="search-empty-icon">🔍</span>
+          <p>No muscles found for "${query}"</p>
+        `;
+        searchResults.appendChild(emptyState);
+        return;
+      }
+
+      const countHeader = document.createElement('div');
+      countHeader.className = 'search-count';
+      countHeader.textContent = `${matches.length} result${matches.length !== 1 ? 's' : ''}`;
+      searchResults.appendChild(countHeader);
+
+      for (const { entry, index } of matches.slice(0, 50)) {
+        const div = document.createElement('div');
+        div.className = 'search-item';
+        div.textContent = entry.label;
+        div.addEventListener('click', () => {
+          selectExamEntry(index);
+          searchInput.value = '';
+          searchResults.innerHTML = '';
+          selectedResultIndex = -1;
+        });
+        searchResults.appendChild(div);
+      }
+
+      return;
+    }
+
     const matches = muscleMeshes.filter((m) =>
       m.userData.displayName.toLowerCase().includes(query)
     );
@@ -1126,11 +1266,13 @@ searchInput.addEventListener('input', () => {
       div.addEventListener('click', () => {
         if (selectedMesh) resetMeshAppearance(selectedMesh);
         selectedMesh = mesh;
+        selectedExamEntryIndex = -1;
         mesh.material = selectedMaterial;
         showInfoPanel(mesh.userData);
         searchInput.value = '';
         searchResults.innerHTML = '';
         selectedResultIndex = -1;
+        updateWorkflowButtons();
         zoomToMesh(mesh);
       });
       searchResults.appendChild(div);
@@ -1178,6 +1320,37 @@ function updateSelectedResult(items) {
   }
 }
 
+function getSelectionCameraLookDirection(mesh) {
+  const data = mesh?.userData?.muscleData;
+  if (!data) return null;
+
+  const rawName = (data.rawName || '').toLowerCase();
+  const group = data.group || '';
+
+  if (group === 'BACK') return new THREE.Vector3(0, 0, 1);
+
+  const posteriorKeywords = [
+    'triceps brachii',
+    'anconeus',
+    'latissimus',
+    'rhomboid',
+    'trapezius',
+    'multifidus',
+    'semispinalis',
+    'spinalis',
+    'erector spinae',
+    'splenius',
+    'quadratus lumborum',
+    'thoracolumbar fascia'
+  ];
+
+  if (posteriorKeywords.some(keyword => rawName.includes(keyword))) {
+    return new THREE.Vector3(0, 0, 1);
+  }
+
+  return null;
+}
+
 function zoomToMesh(mesh) {
   mesh.geometry.computeBoundingBox();
   const box = mesh.geometry.boundingBox;
@@ -1189,9 +1362,12 @@ function zoomToMesh(mesh) {
   const maxDim = Math.max(size.x, size.y, size.z);
   const zoomDist = Math.max(maxDim * 3, 8);
 
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-  const targetPos = center.clone().sub(dir.multiplyScalar(zoomDist));
+  const lookDirection = getSelectionCameraLookDirection(mesh) || (() => {
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    return dir;
+  })();
+  const targetPos = center.clone().sub(lookDirection.multiplyScalar(zoomDist));
 
   animateCamera(targetPos, center, 1000);
 }
@@ -1233,6 +1409,7 @@ if (btnAllMuscles) {
   btnAllMuscles.addEventListener('click', () => {
     if (priorityFilter === 'all') return;
     priorityFilter = 'all';
+    localStorage.setItem('myoatlas_priority_filter', priorityFilter);
     btnAllMuscles.classList.add('active');
     btnPriorityOnly.classList.remove('active');
     rebuildMuscleList();
@@ -1243,10 +1420,16 @@ if (btnPriorityOnly) {
   btnPriorityOnly.addEventListener('click', () => {
     if (priorityFilter === 'priority') return;
     priorityFilter = 'priority';
+    localStorage.setItem('myoatlas_priority_filter', priorityFilter);
     btnPriorityOnly.classList.add('active');
     btnAllMuscles.classList.remove('active');
     rebuildMuscleList();
   });
+}
+
+function updatePriorityFilterButtons() {
+  if (btnAllMuscles) btnAllMuscles.classList.toggle('active', priorityFilter === 'all');
+  if (btnPriorityOnly) btnPriorityOnly.classList.toggle('active', priorityFilter === 'priority');
 }
 
 function rebuildFilters() {
@@ -1301,6 +1484,14 @@ function rebuildFilters() {
 }
 
 function updateMuscleVisibility() {
+  if (isHotspotExamView() && hideMusclesInReflexMode) {
+    for (const mesh of muscleMeshes) {
+      mesh.visible = false;
+    }
+    invalidateVisibleMeshes();
+    return;
+  }
+
   for (const mesh of muscleMeshes) {
     if (hiddenMeshes.has(mesh)) {
       mesh.visible = false;
@@ -1308,7 +1499,7 @@ function updateMuscleVisibility() {
     }
 
     const isTendon = mesh.userData.muscleData.type === 'tendon';
-    const tendonVisible = document.getElementById('toggle-tendons').checked;
+    const tendonVisible = true;
 
     if (isTendon && !tendonVisible) {
       mesh.visible = false;
@@ -1337,10 +1528,54 @@ function updateMuscleVisibility() {
 
 const muscleListContainer = document.getElementById('muscle-list');
 const muscleListCount = document.getElementById('muscle-list-count');
+const btnNextMuscle = document.getElementById('btn-next-muscle');
+const btnAutoProceed = document.getElementById('btn-auto-proceed');
+let orderedExamEntries = [];
+let selectedExamEntryIndex = -1;
+let autoProceed = localStorage.getItem('myoatlas_auto_proceed') === 'true';
+let examListScrollRaf = 0;
+const examDimMaterialCache = new WeakMap();
+
+const EXAM_FOCUS_ZONE_RULES = {
+  SHOULDER: ['SHOULDER', 'CHEST', 'BACK', 'UPPER_ARM'],
+  CHEST: ['CHEST', 'SHOULDER', 'BACK', 'UPPER_ARM'],
+  BACK: ['BACK', 'SHOULDER', 'CHEST', 'UPPER_ARM'],
+  UPPER_ARM: ['UPPER_ARM', 'SHOULDER', 'FOREARM', 'HAND'],
+  FOREARM: ['FOREARM', 'UPPER_ARM', 'HAND'],
+  HAND: ['HAND', 'FOREARM'],
+  ABDOMEN: ['ABDOMEN', 'HIP', 'UPPER_LEG'],
+  HIP: ['HIP', 'UPPER_LEG', 'LOWER_LEG'],
+  UPPER_LEG: ['UPPER_LEG', 'HIP', 'LOWER_LEG', 'FOOT'],
+  LOWER_LEG: ['LOWER_LEG', 'UPPER_LEG', 'FOOT'],
+  FOOT: ['FOOT', 'LOWER_LEG'],
+  HEAD_NECK: ['HEAD_NECK'],
+  OTHER: ['OTHER']
+};
+
+if (btnNextMuscle) {
+  btnNextMuscle.addEventListener('click', selectNextExamEntry);
+}
+
+if (btnAutoProceed) {
+  btnAutoProceed.addEventListener('click', () => {
+    autoProceed = !autoProceed;
+    localStorage.setItem('myoatlas_auto_proceed', autoProceed.toString());
+    updateWorkflowButtons();
+  });
+}
 
 function rebuildMuscleList() {
   muscleListContainer.innerHTML = '';
+  orderedExamEntries = [];
+  selectedExamEntryIndex = -1;
 
+  if (APP_MODE === 'examination') {
+    rebuildCanonicalExamList();
+    updateWorkflowButtons();
+    return;
+  }
+
+  updatePriorityFilterButtons();
   // Filter rating keys by priority if needed
   let filteredKeys = uniqueRatingKeys;
   if (priorityFilter === 'priority') {
@@ -1379,6 +1614,199 @@ function rebuildMuscleList() {
       appendGroupSection(nerve.label, keys);
     }
     muscleListCount.textContent = `(${totalCount})`;
+  }
+}
+
+function rebuildCanonicalExamList() {
+  let totalCount = 0;
+
+  for (const group of EXAM_MUSCLE_GROUPS) {
+    const entries = group.entries
+      .map(entry => {
+        const meshes = findMeshesForExamEntry(entry);
+        return {
+          ...entry,
+          meshes,
+          meshIds: [...new Set(meshes.map(mesh => mesh.userData.meshId).filter(Boolean))],
+        };
+      });
+
+    totalCount += entries.length;
+    appendExamGroupSection(group.heading, entries);
+  }
+
+  muscleListCount.textContent = `(${totalCount})`;
+}
+
+function getExamEntryPatternGroups(entry) {
+  return entry.patternGroups || [entry.patterns || []];
+}
+
+function findMeshesForExamEntry(entry) {
+  const exactNames = new Set((entry.meshNames || []).map(normalizeExamLookupKey));
+  const exactIds = new Set((entry.meshIds || []).map(normalizeExamLookupKey));
+  const patternGroups = getExamEntryPatternGroups(entry)
+    .map(group => group.map(normalizeExamLookupKey))
+    .filter(group => group.length > 0);
+  const matches = [];
+
+  for (const mesh of muscleMeshes) {
+    const candidates = getMeshMatchCandidates(mesh);
+    if (candidates.length === 0) continue;
+
+    if ((entry.exclude || []).some(pattern => candidates.some(candidate => candidate.includes(normalizeExamLookupKey(pattern))))) {
+      continue;
+    }
+
+    if (candidates.some(candidate => exactIds.has(candidate) || exactNames.has(candidate))) {
+      matches.push(mesh);
+      continue;
+    }
+
+    if (patternGroups.some(patterns => patterns.every(pattern =>
+      candidates.some(candidate => candidate.includes(pattern))
+    ))) {
+      matches.push(mesh);
+    }
+  }
+
+  return matches;
+}
+
+function getExamEntryRatingKeys(entry) {
+  return [...new Set(entry.meshes.map(mesh => mesh.userData.ratingKey).filter(Boolean))];
+}
+
+function normalizeExamLookupKey(value) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/\s*\(\d+\)\s*$/g, '')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getMeshMatchCandidates(mesh) {
+  const meta = mesh.userData.meshMapping || {};
+  return [
+    mesh.userData.meshId,
+    mesh.userData.fmaId,
+    mesh.userData.bpId,
+    mesh.userData.muscleData?.meshId,
+    mesh.userData.muscleData?.fmaId,
+    mesh.userData.muscleData?.bpId,
+    meta.meshId,
+    meta.fmaId,
+    meta.bpId,
+    meta.name,
+    meta.originalName,
+    mesh.userData.muscleData?.meshName,
+    mesh.userData.muscleData?.rawName,
+    mesh.userData.displayName,
+    mesh.name,
+  ]
+    .map(normalizeExamLookupKey)
+    .filter(Boolean);
+}
+
+function getExamEntryRating(entry) {
+  const ratingKeys = getExamEntryRatingKeys(entry);
+  const ratings = ratingKeys.map(key => getRating(key)?.strength).filter(Boolean);
+  if (ratings.length === 0) return null;
+  return ratings.every(value => value === ratings[0]) ? { strength: ratings[0] } : { mixed: true };
+}
+
+function appendExamGroupSection(label, entries) {
+  const header = document.createElement('div');
+  header.className = 'muscle-group-header';
+  header.innerHTML = `<span>${label}</span><span class="collapse-icon">&#9660;</span>`;
+
+  const items = document.createElement('div');
+  items.className = 'muscle-group-items';
+
+  entries.forEach(entry => {
+    const index = orderedExamEntries.length;
+    orderedExamEntries.push(entry);
+
+    const item = document.createElement('div');
+    item.className = 'muscle-list-item canonical';
+    item.dataset.examIndex = index.toString();
+    item.classList.toggle('unavailable', entry.meshes.length === 0);
+
+    const rating = getExamEntryRating(entry);
+    if (rating?.strength) item.setAttribute('data-rating', rating.strength);
+    if (rating?.mixed) item.classList.add('mixed-rating');
+
+    const name = document.createElement('span');
+    name.className = 'muscle-list-name';
+    name.textContent = entry.label;
+    name.title = entry.meshes.length > 0 ? entry.label : `${entry.label} (no mesh available)`;
+    item.appendChild(name);
+
+    if (entry.meshes.length === 0) {
+      const missing = document.createElement('span');
+      missing.className = 'missing-mesh-badge';
+      missing.textContent = 'No mesh';
+      item.appendChild(missing);
+    } else {
+      item.addEventListener('click', () => selectExamEntry(index));
+    }
+    items.appendChild(item);
+  });
+
+  header.addEventListener('click', () => {
+    header.classList.toggle('collapsed');
+    items.classList.toggle('collapsed');
+  });
+
+  muscleListContainer.appendChild(header);
+  muscleListContainer.appendChild(items);
+}
+
+function selectExamEntry(index) {
+  const entry = orderedExamEntries[index];
+  if (!entry) return;
+
+  if (selectedExamEntryIndex === index && selectedMesh) {
+    clearCurrentSelection();
+    return;
+  }
+
+  const mesh = entry.meshes.find(m => m.visible) || entry.meshes[0];
+  if (!mesh) return;
+
+  if (selectedMesh) resetMeshAppearance(selectedMesh);
+  selectedMesh = mesh;
+  selectedExamEntryIndex = index;
+  mesh.material = selectedMaterial;
+  showInfoPanel(mesh.userData);
+  updateMuscleListSelection();
+  updateWorkflowButtons();
+  applyExamSelectionFocus();
+  zoomToMesh(mesh);
+}
+
+function selectNextExamEntry() {
+  if (orderedExamEntries.length === 0) return;
+
+  const startIndex = selectedExamEntryIndex < 0 ? 0 : selectedExamEntryIndex + 1;
+  const nextIndex = orderedExamEntries.findIndex((entry, index) =>
+    index >= startIndex && entry.meshes.length > 0
+  );
+
+  if (nextIndex >= 0) selectExamEntry(nextIndex);
+}
+
+function updateWorkflowButtons() {
+  if (btnAutoProceed) {
+    btnAutoProceed.classList.toggle('active', autoProceed);
+    btnAutoProceed.setAttribute('aria-pressed', autoProceed ? 'true' : 'false');
+  }
+
+  if (btnNextMuscle) {
+    btnNextMuscle.disabled = !orderedExamEntries.some((entry, index) =>
+      entry.meshes.length > 0 && index > selectedExamEntryIndex
+    );
   }
 }
 
@@ -1423,10 +1851,17 @@ function appendGroupSection(label, ratingKeys) {
       const mesh = meshes.find(m => m.visible) || meshes[0];
       if (!mesh) return;
 
+      if (selectedMesh === mesh && selectedExamEntryIndex === -1) {
+        clearCurrentSelection();
+        return;
+      }
+
       if (selectedMesh) resetMeshAppearance(selectedMesh);
       selectedMesh = mesh;
+      selectedExamEntryIndex = -1;
       mesh.material = selectedMaterial;
       showInfoPanel(mesh.userData);
+      updateWorkflowButtons();
       zoomToMesh(mesh);
     });
 
@@ -1446,12 +1881,32 @@ function appendGroupSection(label, ratingKeys) {
 function updateMuscleListSelection() {
   const rk = selectedMesh?.userData.ratingKey || '';
   document.querySelectorAll('.muscle-list-item').forEach(item => {
-    item.classList.toggle('selected', item.dataset.ratingKey === rk);
+    if (item.dataset.examIndex !== undefined) {
+      item.classList.toggle('selected', parseInt(item.dataset.examIndex) === selectedExamEntryIndex);
+    } else {
+      item.classList.toggle('selected', item.dataset.ratingKey === rk);
+    }
   });
+
+  scrollSelectedExamEntryIntoView();
 }
 
 function updateMuscleListRatings() {
   document.querySelectorAll('.muscle-list-item').forEach(item => {
+    if (item.dataset.examIndex !== undefined) {
+      const entry = orderedExamEntries[parseInt(item.dataset.examIndex)];
+      const rating = entry ? getExamEntryRating(entry) : null;
+
+      if (rating?.strength) {
+        item.setAttribute('data-rating', rating.strength);
+        item.classList.remove('mixed-rating');
+      } else {
+        item.removeAttribute('data-rating');
+        item.classList.toggle('mixed-rating', rating?.mixed || false);
+      }
+      return;
+    }
+
     const rk = item.dataset.ratingKey;
     const rating = getRating(rk);
 
@@ -1462,6 +1917,95 @@ function updateMuscleListRatings() {
       item.removeAttribute('data-rating');
     }
   });
+
+  scrollSelectedExamEntryIntoView();
+}
+
+function scrollSelectedExamEntryIntoView() {
+  if (examListScrollRaf) cancelAnimationFrame(examListScrollRaf);
+  examListScrollRaf = requestAnimationFrame(() => {
+    const selectedItem = document.querySelector('.muscle-list-item.canonical.selected');
+    selectedItem?.scrollIntoView({ block: 'nearest' });
+    examListScrollRaf = 0;
+  });
+}
+
+function applyExamSelectionFocus() {
+  if (APP_MODE !== 'examination' || examView !== 'muscle') {
+    for (const mesh of muscleMeshes) {
+      resetMeshAppearance(mesh);
+    }
+    invalidateVisibleMeshes();
+    return;
+  }
+
+  const focusEntry = orderedExamEntries[selectedExamEntryIndex] || null;
+  const focusRatingKeys = new Set(
+    focusEntry
+      ? getExamEntryRatingKeys(focusEntry)
+      : (selectedMesh?.userData.ratingKey ? [selectedMesh.userData.ratingKey] : [])
+  );
+  const focusZones = getExamFocusZones(focusEntry?.meshes?.[0] || selectedMesh);
+
+  if (focusRatingKeys.size === 0) {
+    for (const mesh of muscleMeshes) {
+      resetMeshAppearance(mesh);
+    }
+    invalidateVisibleMeshes();
+    return;
+  }
+
+  for (const mesh of muscleMeshes) {
+    const rk = mesh.userData.ratingKey;
+    const meshZone = getExamMeshZone(mesh);
+    const inFocusZone = focusZones.size === 0 || focusZones.has(meshZone);
+
+    if (rk && focusRatingKeys.has(rk)) {
+      const rating = getRating(rk);
+      mesh.material = mesh === selectedMesh
+        ? selectedMaterial
+        : rating
+          ? getRatingMaterial(rating.strength)
+          : mesh.userData.originalMaterial;
+      continue;
+    }
+
+    if (!inFocusZone) {
+      resetMeshAppearance(mesh);
+      continue;
+    }
+
+    const originalMaterial = mesh.userData.originalMaterial;
+    if (!originalMaterial) continue;
+
+    let dimmedMap = examDimMaterialCache.get(originalMaterial);
+    if (!dimmedMap) {
+      dimmedMap = new Map();
+      examDimMaterialCache.set(originalMaterial, dimmedMap);
+    }
+
+    const opacityKey = '0.35';
+    if (!dimmedMap.has(opacityKey)) {
+      const dimmed = originalMaterial.clone();
+      dimmed.transparent = true;
+      dimmed.opacity = 0.35;
+      dimmed.depthWrite = false;
+      dimmedMap.set(opacityKey, dimmed);
+    }
+
+    mesh.material = dimmedMap.get(opacityKey);
+  }
+
+  invalidateVisibleMeshes();
+}
+
+function getExamMeshZone(mesh) {
+  return mesh?.userData?.muscleData?.group || 'OTHER';
+}
+
+function getExamFocusZones(mesh) {
+  const zone = getExamMeshZone(mesh);
+  return new Set(EXAM_FOCUS_ZONE_RULES[zone] || [zone]);
 }
 
 // ───────────── View Buttons ─────────────
@@ -1500,17 +2044,22 @@ function resetView() {
   rebuildFilters();
   rebuildMuscleList();
 
-  document.getElementById('muscle-opacity-slider').value = 1;
-  setMuscleOpacity(1);
-  document.getElementById('skeleton-opacity-slider').value = 0.6;
-  setSkeletonOpacity(0.6);
   hiddenMeshes.clear();
   updateHiddenUI();
   if (selectedMesh) {
     resetMeshAppearance(selectedMesh);
     selectedMesh = null;
   }
+  if (selectedReflexHotspot) {
+    selectedReflexHotspot.userData.isSelected = false;
+    updateHotspotAppearance(selectedReflexHotspot);
+    selectedReflexHotspot = null;
+  }
+  selectedExamEntryIndex = -1;
+  hideReflexPanel();
   hideInfoPanel();
+  updateWorkflowButtons();
+  applyExamSelectionFocus();
 }
 
 function animateCamera(targetPosition, lookAtTarget, duration) {
@@ -1532,99 +2081,14 @@ function animateCamera(targetPosition, lookAtTarget, duration) {
   update();
 }
 
-// Toggle skeleton
-document.getElementById('toggle-skeleton').addEventListener('change', (e) => {
-  if (skeletonGroup) skeletonGroup.visible = e.target.checked;
-});
-
-// Toggle tendons
-document.getElementById('toggle-tendons').addEventListener('change', () => {
-  updateMuscleVisibility();
-});
-
-// Toggle group heads - regenerate rating keys on the fly
-const toggleGroupHeads = document.getElementById('toggle-group-heads');
-if (toggleGroupHeads) {
-  // Set initial state from localStorage
-  toggleGroupHeads.checked = groupHeads;
-
-  toggleGroupHeads.addEventListener('change', (e) => {
-    groupHeads = e.target.checked;
-    localStorage.setItem('groupHeads', groupHeads.toString());
-
-    // Regenerate rating keys for all meshes
-    muscleMeshes.forEach(mesh => {
-      const rawName = mesh.userData.muscleData.rawName;
-      mesh.userData.ratingKey = deriveRatingKey(rawName, groupHeads);
-    });
-
-    // Rebuild the deduplication maps
-    ratingKeyToMeshes.clear();
-    uniqueRatingKeys = [];
-    const seenKeys = new Set();
-
-    for (const mesh of muscleMeshes) {
-      const rk = mesh.userData.ratingKey;
-      if (!ratingKeyToMeshes.has(rk)) {
-        ratingKeyToMeshes.set(rk, []);
-      }
-      ratingKeyToMeshes.get(rk).push(mesh);
-      if (!seenKeys.has(rk)) {
-        uniqueRatingKeys.push(rk);
-        seenKeys.add(rk);
-      }
-    }
-
-    // Rebuild UI
-    rebuildMuscleList();
-    updateProgressChip();
-
-    // If a muscle is selected, refresh the info panel
-    if (selectedMesh) {
-      showInfoPanel(selectedMesh.userData);
-    }
-  });
+function setPressedButton(button, isPressed) {
+  if (!button) return;
+  button.classList.toggle('active', isPressed);
+  button.setAttribute('aria-pressed', isPressed ? 'true' : 'false');
 }
 
-// Muscle opacity slider
-document.getElementById('muscle-opacity-slider').addEventListener('input', (e) => {
-  setMuscleOpacity(parseFloat(e.target.value));
-});
-
-// Skeleton opacity slider
-document.getElementById('skeleton-opacity-slider').addEventListener('input', (e) => {
-  setSkeletonOpacity(parseFloat(e.target.value));
-});
-
-function setMuscleOpacity(opacity) {
-  const seen = new Set();
-  for (const mesh of muscleMeshes) {
-    const mat = mesh.userData.originalMaterial;
-    if (mat && !seen.has(mat)) {
-      seen.add(mat);
-      mat.opacity = opacity;
-      mat.transparent = opacity < 1;
-      mat.depthWrite = opacity >= 1;
-    }
-  }
-  highlightMaterial.opacity = opacity;
-  highlightMaterial.transparent = opacity < 1;
-  highlightMaterial.depthWrite = opacity >= 1;
-  selectedMaterial.opacity = opacity;
-  selectedMaterial.transparent = opacity < 1;
-  selectedMaterial.depthWrite = opacity >= 1;
-  // Update rating materials
-  for (const mat of Object.values(ratingMaterials)) {
-    mat.opacity = opacity;
-    mat.transparent = opacity < 1;
-    mat.depthWrite = opacity >= 1;
-  }
-}
-
-function setSkeletonOpacity(opacity) {
-  boneMaterial.opacity = opacity;
-  boneMaterial.transparent = opacity < 1;
-  boneMaterial.depthWrite = opacity >= 1;
+function isPressedButton(button) {
+  return button?.classList.contains('active') || false;
 }
 
 // ───────────── Mobile Menu Toggles ─────────────
@@ -1754,7 +2218,7 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
 
   showConfirmModal(
     'Clear All Data',
-    `Are you sure you want to clear all muscle ratings and reflex test results? This cannot be undone.`,
+    `Are you sure you want to clear all muscle ratings, reflex test results, and pyramidal signs? This cannot be undone.`,
     () => {
       // Clear muscle ratings
       clearAllRatings();
@@ -1770,6 +2234,11 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
       // Reset all reflex hotspots to untested appearance
       if (reflexHotspots) {
         reflexHotspots.forEach(hotspot => {
+          updateHotspotAppearance(hotspot);
+        });
+      }
+      if (pyramidalHotspots) {
+        pyramidalHotspots.forEach(hotspot => {
           updateHotspotAppearance(hotspot);
         });
       }
@@ -1791,10 +2260,8 @@ document.addEventListener('keydown', (e) => {
       updateRatingButtons(strength);
     }
   } else if (e.key === 'Escape') {
-    if (selectedMesh) {
-      resetMeshAppearance(selectedMesh);
-      selectedMesh = null;
-      hideInfoPanel();
+    if (selectedMesh || selectedReflexHotspot || selectedExamEntryIndex >= 0) {
+      resetView();
     }
   } else if (e.key === 'r' || e.key === 'R') {
     resetView();
@@ -1888,9 +2355,10 @@ function animate() {
     selectedMaterial.emissiveIntensity = 0.9 + (pulse * 1.4); // 0.9 → 2.3
   }
 
-  // Animate reflex hotspots when reflex mode is active
-  if (reflexMode && reflexHotspots.length > 0) {
-    animateHotspots(reflexHotspots);
+  // Animate hotspots when a hotspot-based exam view is active
+  const activeHotspots = getActiveExamHotspots();
+  if (activeHotspots.length > 0) {
+    animateHotspots(activeHotspots);
   }
 
   renderer.render(scene, camera);
@@ -1997,10 +2465,17 @@ async function initBody() {
 
     // Create reflex hotspots (only in examination mode)
     if (APP_MODE === 'examination') {
-      const result = createReflexHotspots(scene);
-      reflexHotspotsGroup = result.hotspotsGroup;
-      reflexHotspots = result.reflexHotspots;
-      reflexHotspotsGroup.visible = reflexMode; // Show if reflex mode was active
+      const reflexResult = createReflexHotspots(scene);
+      reflexHotspotsGroup = reflexResult.hotspotsGroup;
+      reflexHotspots = reflexResult.reflexHotspots;
+
+      const pyramidalResult = createPyramidalHotspots(scene);
+      pyramidalHotspotsGroup = pyramidalResult.hotspotsGroup;
+      pyramidalHotspots = pyramidalResult.pyramidalHotspots;
+
+      reflexHotspotsGroup.visible = examView === 'reflex';
+      pyramidalHotspotsGroup.visible = examView === 'pyramidal';
+      updateMuscleVisibilityForExamView();
     }
 
     hideLoadingOverlay();
@@ -2068,136 +2543,112 @@ function startApp() {
 
 // ───────────── Reflex UI Event Handlers ─────────────
 
+function isHotspotExamView() {
+  return APP_MODE === 'examination' && (examView === 'reflex' || examView === 'pyramidal');
+}
+
+function updateExamViewUI() {
+  document.querySelectorAll('.exam-view-btn[data-exam-view]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.examView === examView);
+  });
+
+  const helper = document.getElementById('exam-view-helper');
+  if (helper) {
+    const helperText = {
+      muscle: 'Select muscles on the model to rate strength from 1 to 5.',
+      reflex: 'Blue grouped markers appear at reflex test sites. Click a marker to grade the reflexes inside it.',
+      pyramidal: 'Orange grouped markers appear at pyramidal sign test sites. Click a marker to mark signs present or absent.'
+    };
+    helper.textContent = helperText[examView];
+    helper.style.display = APP_MODE === 'examination' ? 'block' : 'none';
+  }
+
+  const examMuscleVisibilityContainer = document.getElementById('exam-muscle-visibility-container');
+  if (examMuscleVisibilityContainer) {
+    examMuscleVisibilityContainer.style.display = isHotspotExamView() ? 'flex' : 'none';
+  }
+
+  const toggleExamMuscles = document.getElementById('toggle-exam-muscles');
+  setPressedButton(toggleExamMuscles, !hideMusclesInReflexMode);
+}
+
+function setExamView(nextView) {
+  if (!['muscle', 'reflex', 'pyramidal'].includes(nextView)) return;
+  examView = nextView;
+  localStorage.setItem('myoatlas_exam_view', examView);
+  localStorage.setItem('myoatlas_reflex_mode_active', examView === 'reflex');
+
+  if (reflexHotspotsGroup) reflexHotspotsGroup.visible = examView === 'reflex';
+  if (pyramidalHotspotsGroup) pyramidalHotspotsGroup.visible = examView === 'pyramidal';
+
+  hideReflexPanel();
+  hideInfoPanel();
+  if (selectedReflexHotspot) {
+    selectedReflexHotspot.userData.isSelected = false;
+    updateHotspotAppearance(selectedReflexHotspot);
+  }
+  selectedReflexHotspot = null;
+
+  updateMuscleVisibilityForExamView();
+  updateExamViewUI();
+  applyExamSelectionFocus();
+}
+
+function updateMuscleVisibilityForExamView() {
+  if (isHotspotExamView() && hideMusclesInReflexMode) {
+    muscleMeshes.forEach(m => {
+      m.visible = false;
+    });
+  } else {
+    updateMuscleVisibility();
+  }
+  applyExamSelectionFocus();
+  invalidateVisibleMeshes();
+}
+
 function setupReflexHandlers() {
-  // Reflex mode toggle
-  const reflexModeToggle = document.getElementById('reflex-mode-toggle');
-  const reflexModeHelper = document.getElementById('reflex-mode-helper');
-  const hideMusclesToggleContainer = document.getElementById('hide-muscles-toggle-container');
-  const hideMusclesToggle = document.getElementById('hide-muscles-toggle');
+  const toggleExamMuscles = document.getElementById('toggle-exam-muscles');
 
-  if (reflexModeToggle) {
-    reflexModeToggle.addEventListener('change', (e) => {
-      reflexMode = e.target.checked;
-      localStorage.setItem('myoatlas_reflex_mode_active', reflexMode);
-
-      if (reflexHotspotsGroup) {
-        reflexHotspotsGroup.visible = reflexMode;
-      }
-
-      // Show/hide helper text
-      if (reflexModeHelper) {
-        reflexModeHelper.style.display = reflexMode ? 'block' : 'none';
-      }
-
-      // Show/hide the "Hide Muscles" toggle
-      if (hideMusclesToggleContainer) {
-        hideMusclesToggleContainer.style.display = reflexMode ? 'flex' : 'none';
-      }
-
-      // Apply muscle visibility based on current settings
-      updateMuscleVisibilityForReflexMode();
-
-      // Close any open panels when switching modes
-      if (!reflexMode) {
-        hideReflexPanel();
-      }
-    });
-
-    // Show helper text if reflex mode is already active
-    if (reflexMode && reflexModeHelper) {
-      reflexModeHelper.style.display = 'block';
-    }
-
-    // Show hide muscles toggle if reflex mode is active
-    if (reflexMode && hideMusclesToggleContainer) {
-      hideMusclesToggleContainer.style.display = 'flex';
-    }
-  }
-
-  // Hide muscles toggle handler
-  if (hideMusclesToggle) {
-    hideMusclesToggle.checked = hideMusclesInReflexMode;
-
-    hideMusclesToggle.addEventListener('change', (e) => {
-      hideMusclesInReflexMode = e.target.checked;
-      localStorage.setItem('myoatlas_hide_muscles_reflex', hideMusclesInReflexMode);
-      updateMuscleVisibilityForReflexMode();
-    });
-  }
-
-  function updateMuscleVisibilityForReflexMode() {
-    if (reflexMode && hideMusclesInReflexMode) {
-      // Hide all muscles
-      muscleMeshes.forEach(m => {
-        m.visible = false;
-      });
-      visibleMeshesDirty = true;
-    } else {
-      // Show all muscles (restore visibility)
-      muscleMeshes.forEach(m => {
-        m.visible = true;
-      });
-      visibleMeshesDirty = true;
-    }
-  }
-
-  // Desktop reflex grade buttons
-  document.querySelectorAll('.reflex-grade-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const panel = document.getElementById('reflex-panel');
-      if (!panel) return;
-
-      const reflexId = panel.dataset.reflexId;
-      const side = panel.dataset.side;
-      const grade = btn.dataset.grade;
-
-      if (reflexId && side && grade) {
-        setReflexTest(reflexId, side, grade);
-        updateReflexGradeButtons(grade);
-
-        // Update hotspot appearance
-        if (selectedReflexHotspot) {
-          updateHotspotAppearance(selectedReflexHotspot);
-        }
-      }
-    });
+  document.querySelectorAll('.exam-view-btn[data-exam-view]').forEach(btn => {
+    btn.addEventListener('click', () => setExamView(btn.dataset.examView));
   });
 
-  // Mobile reflex grade buttons
-  document.querySelectorAll('.mobile-grade-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const sheet = document.getElementById('mobile-reflex-sheet');
-      if (!sheet) return;
+  if (toggleExamMuscles) {
+    setPressedButton(toggleExamMuscles, !hideMusclesInReflexMode);
 
-      const reflexId = sheet.dataset.reflexId;
-      const side = sheet.dataset.side;
-      const grade = btn.dataset.grade;
-
-      if (reflexId && side && grade) {
-        setReflexTest(reflexId, side, grade);
-        updateMobileReflexGradeButtons(grade);
-
-        // Update hotspot appearance
-        if (selectedReflexHotspot) {
-          updateHotspotAppearance(selectedReflexHotspot);
-        }
-      }
+    toggleExamMuscles.addEventListener('click', () => {
+      hideMusclesInReflexMode = isPressedButton(toggleExamMuscles);
+      localStorage.setItem('myoatlas_exam_muscles_visible', (!hideMusclesInReflexMode).toString());
+      setPressedButton(toggleExamMuscles, !hideMusclesInReflexMode);
+      updateMuscleVisibilityForExamView();
     });
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.reflex-grade-btn, .mobile-grade-btn');
+    if (!btn || !btn.dataset.reflexId) return;
+
+    const { reflexId, side, grade } = btn.dataset;
+    if (!reflexId || !side || !grade) return;
+
+    setReflexTest(reflexId, side, grade);
+    const host = btn.closest('#reflex-panel, #mobile-reflex-sheet');
+    host?.querySelectorAll(`[data-reflex-id="${reflexId}"]`).forEach(item => {
+      item.classList.toggle('active', item.dataset.grade === grade);
+    });
+
+    refreshExamHotspotAppearances();
   });
 
-  // Pyramidal sign checkboxes
-  document.querySelectorAll('input[data-sign][data-side]').forEach(checkbox => {
-    checkbox.addEventListener('change', (e) => {
-      const signId = e.target.dataset.sign;
-      const side = e.target.dataset.side;
-      const isPresent = e.target.checked;
+  document.addEventListener('change', (e) => {
+    if (!e.target.matches('input[data-sign][data-side]')) return;
 
-      if (signId && side) {
-        console.log(`Setting pyramidal sign: ${signId}_${side} = ${isPresent}`);
-        setPyramidalSign(signId, side, isPresent);
-        console.log(`Stored value:`, getPyramidalSign(signId, side));
-      }
-    });
+    const signId = e.target.dataset.sign;
+    const side = e.target.dataset.side;
+    if (!signId || !side) return;
+
+    setPyramidalSign(signId, side, e.target.checked);
+    refreshExamHotspotAppearances();
   });
 
   // Close reflex panel button
@@ -2211,6 +2662,8 @@ function setupReflexHandlers() {
   if (closeMobileReflexBtn) {
     closeMobileReflexBtn.addEventListener('click', hideReflexPanel);
   }
+
+  updateExamViewUI();
 }
 
 function applyModeUI() {
@@ -2243,17 +2696,13 @@ function applyModeUI() {
     document.getElementById('progress-text').textContent = 'Exploration Mode';
   }
 
-  // Show/hide reflex mode toggle based on app mode
-  const reflexModeToggleContainer = document.getElementById('reflex-mode-toggle-container');
-  if (reflexModeToggleContainer) {
-    reflexModeToggleContainer.classList.toggle('hidden', !isExamination);
+  // Show/hide examination view selector based on app mode
+  const examViewSelector = document.getElementById('exam-view-selector');
+  if (examViewSelector) {
+    examViewSelector.classList.toggle('hidden', !isExamination);
   }
 
-  // Initialize reflex mode toggle state
-  const reflexModeToggle = document.getElementById('reflex-mode-toggle');
-  if (reflexModeToggle) {
-    reflexModeToggle.checked = reflexMode;
-  }
+  updateExamViewUI();
 }
 
 // Start with mode selection
